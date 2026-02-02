@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bluetooth Hidro Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .glass { background: rgba(255,255,255,0.9); backdrop-filter: blur(8px); }
+        .active-btn { background-color: #10b981 !important; color: white; shadow: 0 0 15px rgba(16,185,129,0.5); }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    </style>
+</head>
+<body class="bg-slate-900 min-h-screen text-white p-4 font-sans">
+
+    <header class="max-w-md mx-auto mb-6 text-center">
+        <h1 class="text-2xl font-black text-emerald-400">HIDRO BLE PRO</h1>
+        <p class="text-slate-400 text-[10px] uppercase tracking-[0.2em]">Conexión Local Directa</p>
+    </header>
+
+    <main class="max-w-md mx-auto space-y-4">
+        
+        <!-- Estado Conexión -->
+        <div class="space-y-2">
+            <button id="connectBtn" class="w-full py-4 bg-emerald-600 rounded-2xl font-bold shadow-lg shadow-emerald-900/40 active:scale-95 transition-all">
+                BUSCAR DISPOSITIVO
+            </button>
+            <div id="statusLabel" class="text-center text-[10px] text-slate-500 font-bold uppercase">
+                <span class="status-dot bg-red-500"></span> Desconectado
+            </div>
+        </div>
+
+        <!-- Sensores -->
+        <div class="grid grid-cols-2 gap-3">
+            <div class="glass p-4 rounded-2xl text-slate-800 border-b-4 border-emerald-500">
+                <p class="text-[10px] font-bold text-slate-500 uppercase">Nivel pH</p>
+                <p id="ph" class="text-3xl font-black">--</p>
+            </div>
+            <div class="glass p-4 rounded-2xl text-slate-800 border-b-4 border-blue-500">
+                <p class="text-[10px] font-bold text-slate-500 uppercase">TDS (PPM)</p>
+                <p id="tds" class="text-3xl font-black">--</p>
+            </div>
+            <div class="glass p-4 rounded-2xl text-slate-800 border-b-4 border-orange-400">
+                <p class="text-[10px] font-bold text-slate-500 uppercase">Temp Agua</p>
+                <p id="tw" class="text-3xl font-black">--</p>
+            </div>
+            <div class="glass p-4 rounded-2xl text-slate-800 border-b-4 border-cyan-400">
+                <p class="text-[10px] font-bold text-slate-500 uppercase">Humedad</p>
+                <p id="ha" class="text-3xl font-black">--</p>
+            </div>
+        </div>
+
+        <!-- Relés -->
+        <div class="bg-slate-800/50 p-5 rounded-3xl border border-slate-700 shadow-xl">
+            <h2 class="text-xs font-black mb-4 text-slate-400 uppercase tracking-widest flex justify-between">
+                <span>Control Actuadores</span>
+                <span id="ble-info" class="text-[9px] text-emerald-500">Listo</span>
+            </h2>
+            <div class="grid grid-cols-4 gap-3" id="relayGrid"></div>
+        </div>
+
+        <!-- Almacenamiento -->
+        <div class="pt-4 space-y-2">
+             <button onclick="downloadCSV()" class="w-full py-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold uppercase border border-slate-600 transition-colors">
+                Descargar Historial (.CSV)
+            </button>
+            <p class="text-[9px] text-slate-500 text-center uppercase tracking-tighter">Los datos se guardan solo mientras la app está abierta</p>
+        </div>
+
+    </main>
+
+    <script>
+        let device, characteristic;
+        let sensorData = [];
+        const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+        const CHAR_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+
+        // Verificar soporte
+        if (!navigator.bluetooth) {
+            document.getElementById('connectBtn').innerText = "BLUETOOTH NO SOPORTADO";
+            document.getElementById('connectBtn').classList.replace('bg-emerald-600', 'bg-red-900');
+            document.getElementById('statusLabel').innerHTML = "Usa Chrome en Android o Bluefy en iOS";
+        }
+
+        const grid = document.getElementById('relayGrid');
+        for(let i=1; i<=8; i++) {
+            const btn = document.createElement('button');
+            btn.id = `r${i}`;
+            btn.className = "h-14 bg-slate-700/50 border border-slate-600 rounded-xl text-xs font-black transition-all active:scale-90";
+            btn.innerText = `R${i}`;
+            let state = false;
+            btn.onclick = () => {
+                if(!characteristic) { alert("Conecta el Bluetooth primero"); return; }
+                state = !state;
+                btn.className = state ? "h-14 rounded-xl text-xs font-black active-btn" : "h-14 bg-slate-700/50 border border-slate-600 rounded-xl text-xs font-black";
+                sendRelay(i, state);
+            };
+            grid.appendChild(btn);
+        }
+
+        async function sendRelay(pin, state) {
+            if(!characteristic) return;
+            try {
+                const command = JSON.stringify({p: pin, s: state ? 1 : 0});
+                await characteristic.writeValue(new TextEncoder().encode(command));
+            } catch (e) {
+                console.error("Error enviando comando", e);
+            }
+        }
+
+        document.getElementById('connectBtn').onclick = async () => {
+            try {
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'HIDRO_PRO_TOTAL' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+                
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                characteristic = await service.getCharacteristic(CHAR_UUID);
+                
+                await characteristic.startNotifications();
+                characteristic.addEventListener('characteristicvaluechanged', handleData);
+                
+                document.getElementById('connectBtn').innerText = "CONECTADO";
+                document.getElementById('connectBtn').classList.replace('bg-emerald-600', 'bg-blue-600');
+                document.getElementById('statusLabel').innerHTML = '<span class="status-dot bg-emerald-500"></span> Dispositivo Vinculado';
+                
+                device.addEventListener('gattserverdisconnected', () => {
+                    document.getElementById('connectBtn').innerText = "RECONECTAR";
+                    document.getElementById('statusLabel').innerHTML = '<span class="status-dot bg-red-500"></span> Desconectado';
+                });
+
+            } catch (e) { 
+                console.log("Error de conexión:", e);
+                alert("No se pudo conectar. Asegúrate de que el ESP32 esté cerca y el Bluetooth activo.");
+            }
+        };
+
+        function handleData(event) {
+            const value = new TextDecoder().decode(event.target.value);
+            try {
+                const data = JSON.parse(value);
+                
+                document.getElementById('ph').innerText = data.ph.toFixed(1);
+                document.getElementById('tds').innerText = data.tds;
+                document.getElementById('tw').innerText = data.temp_water.toFixed(1);
+                document.getElementById('ha').innerText = data.hum_air.toFixed(0) + "%";
+
+                sensorData.push({
+                    time: new Date().toLocaleTimeString(),
+                    ph: data.ph,
+                    tds: data.tds,
+                    tw: data.temp_water,
+                    ha: data.hum_air
+                });
+            } catch (err) { console.error("Error parseando datos", err); }
+        }
+
+        function downloadCSV() {
+            if (sensorData.length === 0) { alert("No hay datos guardados todavía"); return; }
+            let csv = "Hora,PH,TDS,TempAgua,HumAire\n";
+            sensorData.forEach(r => {
+                csv += `${r.time},${r.ph},${r.tds},${r.tw},${r.ha}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'hidro_log_' + new Date().toLocaleDateString() + '.csv');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    </script>
+</body>
+</html>
