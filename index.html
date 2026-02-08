@@ -3,148 +3,199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hidro Pro - Control Total e Histéresis</title>
+    <title>HidroPro Ultra - Control de Precisión</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
-        .card-ph { border-top: 4px solid #10b981; }
-        .card-tds { border-top: 4px solid #3b82f6; }
-        .card-temp-w { border-top: 4px solid #06b6d4; }
-        .card-temp-a { border-top: 4px solid #f59e0b; }
-        .card-hum { border-top: 4px solid #8b5cf6; }
-        .card-light { border-top: 4px solid #eab308; }
-        
-        body { background: radial-gradient(circle at top, #0f172a, #020617); min-height: 100vh; }
-        .chart-container { height: 120px; position: relative; }
-        input[type="number"]::-webkit-inner-spin-button { display: none; }
+        :root { --bg: #020617; --card: #0f172a; --accent: #10b981; }
+        body { background-color: var(--bg); color: #f1f5f9; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(10px); }
+        .input-dark { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; text-align: center; font-weight: bold; color: white; }
+        .status-led { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .led-on { background: #10b981; box-shadow: 0 0 10px #10b981; }
+        .led-off { background: #334155; }
+        .led-wait { background: #f59e0b; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     </style>
 </head>
-<body class="text-slate-200 p-4 pb-24">
+<body class="p-4 pb-32">
 
-    <!-- Header -->
-    <header class="max-w-6xl mx-auto mb-6 flex justify-between items-center bg-slate-900/50 p-4 rounded-3xl border border-white/5">
+    <header class="max-w-7xl mx-auto flex flex-wrap justify-between items-center mb-8 gap-4">
         <div>
-            <h1 class="text-2xl font-black text-emerald-400 italic leading-none">HIDRO<span class="text-white font-light">PRO</span></h1>
-            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Automatización por Histéresis</p>
+            <h1 class="text-3xl font-black text-emerald-500 italic">HIDRO<span class="text-white">PRO</span> <span class="text-xs bg-emerald-500/20 px-2 py-1 rounded text-emerald-400 not-italic ml-2">ULTRA V2</span></h1>
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Sistema de Dosificación Cíclica y Fotoperiodo</p>
         </div>
-        <div class="flex gap-3">
-            <button id="connectBtn" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-2xl text-[10px] font-black transition-all shadow-lg shadow-emerald-900/20">
-                CONECTAR BLE
-            </button>
+        <div class="flex items-center gap-4 bg-slate-900 p-2 rounded-2xl border border-white/5">
+            <div class="text-right">
+                <p id="clock" class="text-sm font-mono font-bold">00:00:00</p>
+                <p id="bleStatus" class="text-[9px] text-red-500 font-black">DESCONECTADO</p>
+            </div>
+            <button id="connectBtn" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-2 rounded-xl text-xs font-black transition-all">CONECTAR</button>
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <main class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-        <!-- PANEL pH -->
-        <section class="glass p-5 rounded-[2rem] card-ph space-y-3">
-            <div class="flex justify-between items-center">
-                <h2 class="text-[11px] font-black text-emerald-500 uppercase">Sensor pH</h2>
-                <span id="phVal" class="text-2xl font-black text-white">--</span>
-            </div>
-            <div class="chart-container"><canvas id="phChart"></canvas></div>
-            <div class="bg-black/20 p-3 rounded-2xl space-y-2 border border-white/5">
-                <p class="text-[9px] font-bold text-slate-500 uppercase text-center">Configuración de Salida</p>
-                <div class="grid grid-cols-3 gap-2">
-                    <div class="text-center"><p class="text-[8px] text-slate-500">Min</p><input type="number" id="phMin" value="5.5" class="bg-transparent text-center w-full text-xs font-bold text-emerald-400 outline-none"></div>
-                    <div class="text-center"><p class="text-[8px] text-slate-500">Max</p><input type="number" id="phMax" value="6.5" class="bg-transparent text-center w-full text-xs font-bold text-emerald-400 outline-none"></div>
-                    <div class="text-center"><p class="text-[8px] text-slate-500">Relé</p><input type="number" id="phRelay" value="1" min="1" max="8" class="bg-transparent text-center w-full text-xs font-bold text-white outline-none"></div>
+        <!-- PANEL PH CON DOBLE DOSIFICACIÓN -->
+        <section class="glass p-5 rounded-[2.5rem] border-t-4 border-emerald-500">
+            <div class="flex justify-between items-end mb-4">
+                <div>
+                    <h2 class="text-[11px] font-black text-emerald-500 uppercase">Gestión de pH</h2>
+                    <p class="text-3xl font-black" id="phVal">--</p>
                 </div>
+                <div class="text-right text-[10px] font-bold text-slate-500">
+                    <div id="phStatusText">ESPERANDO</div>
+                </div>
+            </div>
+            <div class="h-32 mb-4"><canvas id="phChart"></canvas></div>
+            
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="bg-black/20 p-2 rounded-xl">
+                    <p class="text-[8px] text-slate-500 uppercase mb-1">Rango Objetivo</p>
+                    <div class="flex items-center gap-1">
+                        <input type="number" id="phMin" value="5.8" step="0.1" class="input-dark w-full text-xs">
+                        <span>-</span>
+                        <input type="number" id="phMax" value="6.2" step="0.1" class="input-dark w-full text-xs">
+                    </div>
+                </div>
+                <div class="bg-black/20 p-2 rounded-xl">
+                    <p class="text-[8px] text-slate-500 uppercase mb-1">Dosificación (Seg)</p>
+                    <input type="number" id="phDoseTime" value="5" class="input-dark w-full text-xs">
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center text-[10px] font-bold px-1">
+                <div class="flex items-center"><span class="status-led led-off" id="led-ph-plus"></span> R1: pH+</div>
+                <div class="flex items-center"><span class="status-led led-off" id="led-ph-minus"></span> R2: pH-</div>
+                <div class="text-slate-400">Espera: <input type="number" id="phWaitTime" value="60" class="bg-transparent w-8 text-emerald-500 outline-none">s</div>
             </div>
         </section>
 
-        <!-- PANEL TDS -->
-        <section class="glass p-5 rounded-[2rem] card-tds space-y-3">
-            <div class="flex justify-between items-center">
-                <h2 class="text-[11px] font-black text-blue-500 uppercase">Nutrientes (TDS)</h2>
-                <span id="tdsVal" class="text-2xl font-black text-white">--</span>
-            </div>
-            <div class="chart-container"><canvas id="tdsChart"></canvas></div>
-            <div class="bg-black/20 p-3 rounded-2xl space-y-2 border border-white/5">
-                <p class="text-[9px] font-bold text-slate-500 uppercase text-center">Configuración de Salida</p>
-                <div class="grid grid-cols-3 gap-2">
-                    <div class="text-center"><p class="text-[8px] text-slate-500">Set (PPM)</p><input type="number" id="tdsSet" value="800" class="bg-transparent text-center w-full text-xs font-bold text-blue-400 outline-none"></div>
-                    <div class="text-center"><p class="text-[8px] text-slate-500">Hyst</p><input type="number" id="tdsHyst" value="50" class="bg-transparent text-center w-full text-xs font-bold text-blue-400 outline-none"></div>
-                    <div class="text-center"><p class="text-[8px] text-slate-500">Relé</p><input type="number" id="tdsRelay" value="3" min="1" max="8" class="bg-transparent text-center w-full text-xs font-bold text-white outline-none"></div>
+        <!-- PANEL NUTRIENTES (TDS) CON ALARMA -->
+        <section class="glass p-5 rounded-[2.5rem] border-t-4 border-blue-500">
+            <div class="flex justify-between items-end mb-4">
+                <div>
+                    <h2 class="text-[11px] font-black text-blue-500 uppercase">Nutrientes A+B</h2>
+                    <p class="text-3xl font-black" id="tdsVal">-- <span class="text-xs">PPM</span></p>
                 </div>
+                <div id="tdsAlarm" class="hidden animate-bounce text-[10px] bg-red-600 px-2 py-1 rounded text-white font-black">CRÍTICO: VACIAR</div>
+            </div>
+            <div class="h-32 mb-4"><canvas id="tdsChart"></canvas></div>
+            
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="bg-black/20 p-2 rounded-xl">
+                    <p class="text-[8px] text-slate-500 uppercase mb-1">PPM Objetivo</p>
+                    <input type="number" id="tdsTarget" value="800" class="input-dark w-full text-xs text-blue-400">
+                </div>
+                <div class="bg-black/20 p-2 rounded-xl">
+                    <p class="text-[8px] text-slate-500 uppercase mb-1">Límite Alarma</p>
+                    <input type="number" id="tdsMax" value="1200" class="input-dark w-full text-xs text-red-400">
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center text-[10px] font-bold px-1">
+                <div class="flex items-center"><span class="status-led led-off" id="led-nut-a"></span> R3: Nut A</div>
+                <div class="flex items-center"><span class="status-led led-off" id="led-nut-b"></span> R4: Nut B</div>
+                <div class="flex items-center"><span class="status-led led-off" id="led-flush"></span> R9: Vaciado</div>
             </div>
         </section>
 
         <!-- PANEL TEMPERATURA AGUA -->
-        <section class="glass p-5 rounded-[2rem] card-temp-w space-y-3">
-            <div class="flex justify-between items-center">
-                <h2 class="text-[11px] font-black text-cyan-500 uppercase">Temp. Agua</h2>
-                <span id="twVal" class="text-2xl font-black text-white">--°C</span>
+        <section class="glass p-5 rounded-[2.5rem] border-t-4 border-cyan-500">
+            <div class="flex justify-between items-end mb-4">
+                <div>
+                    <h2 class="text-[11px] font-black text-cyan-500 uppercase">Temperatura Agua</h2>
+                    <p class="text-3xl font-black" id="twVal">--°C</p>
+                </div>
             </div>
-            <div class="chart-container"><canvas id="twChart"></canvas></div>
-            <div class="bg-black/20 p-3 rounded-2xl space-y-2 border border-white/5">
-                <div class="grid grid-cols-2 gap-2 text-center">
-                    <div><p class="text-[8px] text-slate-500 uppercase">Actuar si > </p><input type="number" id="twMax" value="26" class="bg-transparent text-center w-full text-xs font-bold text-cyan-400 outline-none"></div>
-                    <div><p class="text-[8px] text-slate-500 uppercase">Relé Cooler</p><input type="number" id="twRelay" value="6" min="1" max="8" class="bg-transparent text-center w-full text-xs font-bold text-white outline-none"></div>
+            <div class="h-32 mb-4"><canvas id="twChart"></canvas></div>
+            
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="bg-black/20 p-2 rounded-xl text-center">
+                    <p class="text-[8px] text-slate-500 uppercase mb-1">Calentar si < </p>
+                    <input type="number" id="twMin" value="18" class="input-dark w-full text-xs">
+                </div>
+                <div class="bg-black/20 p-2 rounded-xl text-center">
+                    <p class="text-[8px] text-slate-500 uppercase mb-1">Enfriar si > </p>
+                    <input type="number" id="twMax" value="24" class="input-dark w-full text-xs">
+                </div>
+            </div>
+            <div class="flex justify-around text-[10px] font-bold">
+                <div class="flex items-center"><span class="status-led led-off" id="led-heat"></span> R5: Calent.</div>
+                <div class="flex items-center"><span class="status-led led-off" id="led-cool"></span> R6: Cooler</div>
+            </div>
+        </section>
+
+        <!-- PANEL FOTOPERIODO (LUZ) -->
+        <section class="glass p-5 rounded-[2.5rem] border-t-4 border-yellow-500">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-[11px] font-black text-yellow-500 uppercase">Fotoperiodo</h2>
+                <div id="lightIndicator" class="px-2 py-1 rounded bg-slate-800 text-[9px] font-black">SENSOR: OSCURO</div>
+            </div>
+            <div class="h-32 mb-4"><canvas id="lightChart"></canvas></div>
+            
+            <div class="bg-black/20 p-4 rounded-3xl space-y-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">Horas de Luz</span>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="lightHours" value="18" min="1" max="24" class="input-dark w-12 text-sm">
+                        <span class="text-[10px] text-slate-500">h / día</span>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">Inicio Ciclo</span>
+                    <input type="time" id="lightStart" value="06:00" class="input-dark px-2 text-xs">
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-white/5">
+                    <div class="flex items-center"><span class="status-led led-off" id="led-light"></span> R7: Foco</div>
+                    <span id="lightTimeLeft" class="text-[9px] font-mono text-yellow-500 font-bold italic">Cerrando ciclo en 04:20:11</span>
                 </div>
             </div>
         </section>
 
-        <!-- PANEL TEMPERATURA AMBIENTE -->
-        <section class="glass p-5 rounded-[2rem] card-temp-a space-y-3">
-            <div class="flex justify-between items-center">
-                <h2 class="text-[11px] font-black text-amber-500 uppercase">Temp. Ambiente</h2>
-                <span id="taVal" class="text-2xl font-black text-white">--°C</span>
-            </div>
-            <div class="chart-container"><canvas id="taChart"></canvas></div>
-            <div class="bg-black/20 p-3 rounded-2xl space-y-2 border border-white/5">
-                <div class="grid grid-cols-2 gap-2 text-center">
-                    <div><p class="text-[8px] text-slate-500 uppercase">Actuar si > </p><input type="number" id="taMax" value="30" class="bg-transparent text-center w-full text-xs font-bold text-amber-400 outline-none"></div>
-                    <div><p class="text-[8px] text-slate-500 uppercase">Relé Extractor</p><input type="number" id="taRelay" value="7" min="1" max="8" class="bg-transparent text-center w-full text-xs font-bold text-white outline-none"></div>
+        <!-- AMBIENTE -->
+        <section class="glass p-5 rounded-[2.5rem] border-t-4 border-purple-500">
+            <h2 class="text-[11px] font-black text-purple-500 uppercase mb-4">Humedad y Aire</h2>
+            <div class="grid grid-cols-2 gap-4 h-32 mb-4">
+                <div class="text-center flex flex-col justify-center">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase">Humedad</p>
+                    <p class="text-3xl font-black" id="haVal">--%</p>
+                </div>
+                <div class="text-center flex flex-col justify-center">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase">Temp. Amb</p>
+                    <p class="text-3xl font-black" id="taVal">--°</p>
                 </div>
             </div>
-        </section>
-
-        <!-- PANEL HUMEDAD -->
-        <section class="glass p-5 rounded-[2rem] card-hum space-y-3">
-            <div class="flex justify-between items-center">
-                <h2 class="text-[11px] font-black text-purple-500 uppercase">Humedad Aire</h2>
-                <span id="haVal" class="text-2xl font-black text-white">--%</span>
-            </div>
-            <div class="chart-container"><canvas id="haChart"></canvas></div>
-            <div class="bg-black/20 p-3 rounded-2xl space-y-2 border border-white/5">
-                <div class="grid grid-cols-2 gap-2 text-center">
-                    <div><p class="text-[8px] text-slate-500 uppercase">Actuar si < </p><input type="number" id="haMin" value="40" class="bg-transparent text-center w-full text-xs font-bold text-purple-400 outline-none"></div>
-                    <div><p class="text-[8px] text-slate-500 uppercase">Relé Humidif.</p><input type="number" id="haRelay" value="5" min="1" max="8" class="bg-transparent text-center w-full text-xs font-bold text-white outline-none"></div>
+            <div class="grid grid-cols-2 gap-2 text-[10px] font-bold">
+                <div class="flex items-center justify-center p-2 bg-black/20 rounded-xl">
+                    <span class="status-led led-off" id="led-hum"></span> R8: Humidif.
                 </div>
-            </div>
-        </section>
-
-        <!-- PANEL LUZ (LDR) -->
-        <section class="glass p-5 rounded-[2rem] card-light space-y-3">
-            <div class="flex justify-between items-center">
-                <h2 class="text-[11px] font-black text-yellow-500 uppercase">Estado Luz</h2>
-                <span id="lightText" class="text-xs font-black text-slate-400 uppercase tracking-widest">Calculando...</span>
-            </div>
-            <div class="chart-container"><canvas id="lChart"></canvas></div>
-            <div class="flex items-center justify-between bg-black/20 p-4 rounded-2xl border border-white/5">
-                <div class="flex flex-col">
-                    <span class="text-[8px] font-bold text-slate-500 uppercase">Asignar Relé de Foco</span>
-                    <input type="number" id="lRelay" value="4" class="bg-transparent w-12 text-xl font-black text-yellow-400 outline-none">
-                </div>
-                <div id="lightBulb" class="w-10 h-10 rounded-full bg-slate-800 border-2 border-slate-700 flex items-center justify-center transition-all">
-                    <div class="w-2 h-2 rounded-full bg-slate-600"></div>
+                <div class="flex items-center justify-center p-2 bg-black/20 rounded-xl">
+                    <span class="status-led led-off" id="led-fan"></span> R10: Extractor
                 </div>
             </div>
         </section>
 
     </main>
 
-    <!-- Barra Inferior de Relés (Control Manual y Estado) -->
+    <!-- FOOTER RELÉS -->
     <footer class="fixed bottom-0 left-0 right-0 p-4 bg-slate-950/90 backdrop-blur-xl border-t border-white/10 z-50">
-        <div class="max-w-6xl mx-auto space-y-3">
-            <div class="flex justify-between items-center px-2">
-                <span class="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Control de Relés (Tiempo: <input type="number" id="manualTimer" value="5" class="bg-transparent w-6 text-emerald-400 outline-none"> s)</span>
-                <span id="commStatus" class="text-[8px] text-emerald-600 font-bold">● VINCULADO</span>
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <div class="grid grid-cols-5 md:grid-cols-10 gap-2 flex-1">
+                <script>
+                    for(let i=1; i<=10; i++){
+                        document.write(`
+                            <button onclick="manualToggle(${i})" class="flex flex-col items-center p-2 rounded-xl bg-slate-900 border border-white/5 active:scale-95 transition-all">
+                                <span class="text-[8px] font-black text-slate-500">R${i}</span>
+                                <div id="footer-led-${i}" class="w-2 h-2 rounded-full bg-slate-700 mt-1"></div>
+                            </button>
+                        `);
+                    }
+                </script>
             </div>
-            <div class="grid grid-cols-8 gap-2" id="relayBar">
-                <!-- Se generan dinámicamente -->
+            <div class="text-[9px] font-black text-slate-500 uppercase flex gap-4">
+                <span>Ciclo: 30s</span>
+                <span>Mezcla: <span id="stabilizationTimer">--</span>s</span>
             </div>
         </div>
     </footer>
@@ -154,48 +205,60 @@
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHAR_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
 
-        // Generar Barra de Relés
-        const rBar = document.getElementById('relayBar');
-        for(let i=1; i<=8; i++) {
-            const btn = document.createElement('button');
-            btn.id = `relay-btn-${i}`;
-            btn.className = "flex flex-col items-center justify-center p-2 rounded-xl bg-slate-800 border border-white/5 transition-all active:scale-90";
-            btn.innerHTML = `<span class="text-[8px] font-bold text-slate-500">R${i}</span><div class="w-2 h-2 rounded-full bg-slate-700 mt-1" id="led-${i}"></div>`;
-            btn.onclick = () => manualRelay(i);
-            rBar.appendChild(btn);
-        }
-
-        // Configuración Gráficos
-        const cOpt = (color) => ({
+        // CONFIGURACIÓN DE GRÁFICOS (Métrica 30s)
+        const commonOptions = (color) => ({
             responsive: true, maintainAspectRatio: false,
             scales: { x: { display: false }, y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#475569', font: { size: 8 } } } },
             plugins: { legend: { display: false } },
-            elements: { line: { tension: 0.4, borderWidth: 2, borderColor: color }, point: { radius: 0 } }
+            elements: { line: { tension: 0.3, borderWidth: 2, borderColor: color }, point: { radius: 0 } }
         });
 
         const mkChart = (id, color) => new Chart(document.getElementById(id), {
             type: 'line',
             data: { labels: [], datasets: [{ data: [], borderColor: color, fill: true, backgroundColor: color + '05' }] },
-            options: cOpt(color)
+            options: commonOptions(color)
         });
 
         const charts = {
             ph: mkChart('phChart', '#10b981'),
             tds: mkChart('tdsChart', '#3b82f6'),
             tw: mkChart('twChart', '#06b6d4'),
-            ta: mkChart('taChart', '#f59e0b'),
-            ha: mkChart('haChart', '#8b5cf6'),
-            l: mkChart('lChart', '#eab308')
+            ha: mkChart('lightChart', '#eab308') // Reutilizamos para luz/humedad
         };
 
-        async function manualRelay(pin) {
-            const sec = document.getElementById('manualTimer').value;
-            await sendCmd({ p: pin, s: 1, d: parseInt(sec) });
-            // Feedback visual temporal
-            document.getElementById(`led-${pin}`).classList.replace('bg-slate-700', 'bg-emerald-500');
-            setTimeout(() => {
-                document.getElementById(`led-${pin}`).classList.replace('bg-emerald-500', 'bg-slate-700');
-            }, sec * 1000);
+        // LÓGICA DE TIEMPO
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('es-ES', { hour12: false });
+            updateFotoperiodo(now);
+        }, 1000);
+
+        function updateFotoperiodo(now) {
+            const startStr = document.getElementById('lightStart').value;
+            const hours = parseInt(document.getElementById('lightHours').value);
+            const [h, m] = startStr.split(':').map(Number);
+            
+            const startDate = new Date(now);
+            startDate.setHours(h, m, 0);
+            
+            const endDate = new Date(startDate);
+            endDate.setHours(startDate.getHours() + hours);
+            
+            const isOn = now >= startDate && now < endDate;
+            const led = document.getElementById('led-light');
+            led.className = isOn ? "status-led led-on" : "status-led led-off";
+            
+            const label = document.getElementById('lightTimeLeft');
+            if (isOn) {
+                const diff = endDate - now;
+                label.innerText = `Finaliza en: ${new Date(diff).toISOString().substr(11, 8)}`;
+            } else {
+                label.innerText = "Ciclo de oscuridad";
+            }
+        }
+
+        async function manualToggle(r) {
+            await sendCmd({ p: r, s: 1, d: 5 }); // Test de 5 segundos
         }
 
         async function sendCmd(obj) {
@@ -207,41 +270,37 @@
         }
 
         function updateUI(d) {
-            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            
-            // Textos
+            // Actualización de valores
             document.getElementById('phVal').innerText = d.ph.toFixed(2);
             document.getElementById('tdsVal').innerText = d.tds;
-            document.getElementById('twVal').innerText = d.tw.toFixed(1) + "°";
-            document.getElementById('taVal').innerText = d.ta.toFixed(1) + "°";
-            document.getElementById('haVal').innerText = d.ha.toFixed(0) + "%";
+            document.getElementById('twVal').innerText = d.tw.toFixed(1);
+            document.getElementById('haVal').innerText = d.ha.toFixed(0);
+            document.getElementById('taVal').innerText = d.ta.toFixed(1);
             
-            const isLight = d.light === 1;
-            document.getElementById('lightText').innerText = isLight ? "ILUMINADO" : "OSCURO";
-            document.getElementById('lightBulb').style.backgroundColor = isLight ? "#facc15" : "#1e293b";
-            document.getElementById('lightBulb').style.boxShadow = isLight ? "0 0 20px rgba(250, 204, 21, 0.3)" : "none";
+            const isDark = d.light === 1; // Ajustado: Tu sensor da oscuro cuando está prendido
+            document.getElementById('lightIndicator').innerText = isDark ? "SENSOR: LUZ DETECTADA" : "SENSOR: OSCURIDAD";
+            document.getElementById('lightIndicator').className = isDark ? 
+                "px-2 py-1 rounded bg-yellow-500/20 text-yellow-500 text-[9px] font-black border border-yellow-500/30" : 
+                "px-2 py-1 rounded bg-slate-800 text-slate-500 text-[9px] font-black";
 
-            // Actualizar Gráficos
-            const map = { ph: d.ph, tds: d.tds, tw: d.tw, ta: d.ta, ha: d.ha, l: d.light };
+            // Alarmas PPM
+            const tdsAlarm = document.getElementById('tdsAlarm');
+            if(d.tds > parseInt(document.getElementById('tdsMax').value)) {
+                tdsAlarm.classList.remove('hidden');
+            } else {
+                tdsAlarm.classList.add('hidden');
+            }
+
+            // Actualizar Gráficos (Métrica 30 seg gestionada por el tiempo de recepción)
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const map = { ph: d.ph, tds: d.tds, tw: d.tw, ha: d.ha };
             Object.keys(charts).forEach(key => {
                 const c = charts[key];
-                if(c.data.labels.length > 20) { c.data.labels.shift(); c.data.datasets[0].data.shift(); }
+                if(c.data.labels.length > 30) { c.data.labels.shift(); c.data.datasets[0].data.shift(); }
                 c.data.labels.push(time);
                 c.data.datasets[0].data.push(map[key]);
                 c.update('none');
             });
-
-            // LÓGICA DE AUTOMATIZACIÓN (Client-Side Feedback)
-            // Aquí el JS puede enviar comandos automáticos al ESP32 si los valores salen de rango
-            checkHysteresis(d);
-        }
-
-        function checkHysteresis(d) {
-            // Ejemplo para pH
-            const phMin = parseFloat(document.getElementById('phMin').value);
-            const phMax = parseFloat(document.getElementById('phMax').value);
-            const phR = parseInt(document.getElementById('phRelay').value);
-            if(d.ph > phMax) { /* Podría enviar comando para bajar pH */ }
         }
 
         document.getElementById('connectBtn').onclick = async () => {
@@ -259,8 +318,10 @@
                     const data = JSON.parse(new TextDecoder().decode(e.target.value));
                     updateUI(data);
                 });
-                document.getElementById('connectBtn').innerText = "VINCULADO";
-                document.getElementById('connectBtn').classList.replace('bg-emerald-600', 'bg-blue-600');
+                
+                document.getElementById('bleStatus').innerText = "VINCULADO";
+                document.getElementById('bleStatus').className = "text-[9px] text-emerald-500 font-black";
+                document.getElementById('connectBtn').innerText = "SISTEMA ACTIVO";
             } catch (err) { console.error(err); }
         };
     </script>
