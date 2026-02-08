@@ -3,175 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HidroPro Ultra - Control de Precisión</title>
+    <title>HidroPro Ultra - Control Total</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --bg: #020617; --card: #0f172a; --accent: #10b981; }
-        body { background-color: var(--bg); color: #f1f5f9; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg); color: #f1f5f9; font-family: 'Inter', sans-serif; overflow-x: hidden; }
         .glass { background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(10px); }
         .input-dark { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; text-align: center; font-weight: bold; color: white; }
         .status-led { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
         .led-on { background: #10b981; box-shadow: 0 0 10px #10b981; }
         .led-off { background: #334155; }
-        .led-wait { background: #f59e0b; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        .uptime-badge { font-family: 'Mono', monospace; font-size: 8px; background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; color: #94a3b8; }
+        .relay-tag { font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
     </style>
 </head>
 <body class="p-4 pb-32">
 
     <header class="max-w-7xl mx-auto flex flex-wrap justify-between items-center mb-8 gap-4">
         <div>
-            <h1 class="text-3xl font-black text-emerald-500 italic">HIDRO<span class="text-white">PRO</span> <span class="text-xs bg-emerald-500/20 px-2 py-1 rounded text-emerald-400 not-italic ml-2">ULTRA V2</span></h1>
-            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Sistema de Dosificación Cíclica y Fotoperiodo</p>
+            <h1 class="text-3xl font-black text-emerald-500 italic uppercase">Hidro<span class="text-white">Pro</span> <span class="text-xs bg-emerald-500/20 px-2 py-1 rounded text-emerald-400 not-italic ml-2 tracking-tighter">ULTRA V3</span></h1>
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Sistema Automatizado de Control de Cultivo</p>
         </div>
         <div class="flex items-center gap-4 bg-slate-900 p-2 rounded-2xl border border-white/5">
             <div class="text-right">
-                <p id="clock" class="text-sm font-mono font-bold">00:00:00</p>
+                <p id="clock" class="text-sm font-mono font-bold tracking-tighter">00:00:00</p>
                 <p id="bleStatus" class="text-[9px] text-red-500 font-black">DESCONECTADO</p>
             </div>
-            <button id="connectBtn" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-2 rounded-xl text-xs font-black transition-all">CONECTAR</button>
+            <button id="connectBtn" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-2 rounded-xl text-xs font-black transition-all shadow-lg shadow-emerald-900/20">CONECTAR</button>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-        <!-- PANEL PH CON DOBLE DOSIFICACIÓN -->
+        <!-- PANEL PH (R1/R2) -->
         <section class="glass p-5 rounded-[2.5rem] border-t-4 border-emerald-500">
-            <div class="flex justify-between items-end mb-4">
+            <div class="flex justify-between items-start mb-2">
                 <div>
-                    <h2 class="text-[11px] font-black text-emerald-500 uppercase">Gestión de pH</h2>
+                    <h2 class="text-[11px] font-black text-emerald-500 uppercase">Acidez / Alcalinidad (pH)</h2>
                     <p class="text-3xl font-black" id="phVal">--</p>
                 </div>
-                <div class="text-right text-[10px] font-bold text-slate-500">
-                    <div id="phStatusText">ESPERANDO</div>
-                </div>
+                <div class="uptime-badge">R1/R2</div>
             </div>
-            <div class="h-32 mb-4"><canvas id="phChart"></canvas></div>
-            
-            <div class="grid grid-cols-2 gap-3 mb-4">
-                <div class="bg-black/20 p-2 rounded-xl">
-                    <p class="text-[8px] text-slate-500 uppercase mb-1">Rango Objetivo</p>
-                    <div class="flex items-center gap-1">
-                        <input type="number" id="phMin" value="5.8" step="0.1" class="input-dark w-full text-xs">
-                        <span>-</span>
-                        <input type="number" id="phMax" value="6.2" step="0.1" class="input-dark w-full text-xs">
-                    </div>
+            <div class="h-40 mb-4"><canvas id="phChart"></canvas></div>
+            <div class="bg-black/20 p-3 rounded-2xl">
+                <div class="flex justify-between mb-2"><span class="relay-tag">R1: Ácido (-)</span> <span class="relay-tag">R2: Base (+)</span></div>
+                <div class="flex gap-2">
+                    <input type="number" id="phMin" value="5.8" step="0.1" class="input-dark w-full text-xs py-1" title="Mínimo">
+                    <input type="number" id="phMax" value="6.2" step="0.1" class="input-dark w-full text-xs py-1" title="Máximo">
                 </div>
-                <div class="bg-black/20 p-2 rounded-xl">
-                    <p class="text-[8px] text-slate-500 uppercase mb-1">Dosificación (Seg)</p>
-                    <input type="number" id="phDoseTime" value="5" class="input-dark w-full text-xs">
-                </div>
-            </div>
-
-            <div class="flex justify-between items-center text-[10px] font-bold px-1">
-                <div class="flex items-center"><span class="status-led led-off" id="led-ph-plus"></span> R1: pH+</div>
-                <div class="flex items-center"><span class="status-led led-off" id="led-ph-minus"></span> R2: pH-</div>
-                <div class="text-slate-400">Espera: <input type="number" id="phWaitTime" value="60" class="bg-transparent w-8 text-emerald-500 outline-none">s</div>
             </div>
         </section>
 
-        <!-- PANEL NUTRIENTES (TDS) CON ALARMA -->
+        <!-- PANEL NUTRIENTES (R3/R4) -->
         <section class="glass p-5 rounded-[2.5rem] border-t-4 border-blue-500">
-            <div class="flex justify-between items-end mb-4">
+            <div class="flex justify-between items-start mb-2">
                 <div>
-                    <h2 class="text-[11px] font-black text-blue-500 uppercase">Nutrientes A+B</h2>
-                    <p class="text-3xl font-black" id="tdsVal">-- <span class="text-xs">PPM</span></p>
+                    <h2 class="text-[11px] font-black text-blue-500 uppercase">Nutrientes (TDS PPM)</h2>
+                    <p class="text-3xl font-black" id="tdsVal">--</p>
                 </div>
-                <div id="tdsAlarm" class="hidden animate-bounce text-[10px] bg-red-600 px-2 py-1 rounded text-white font-black">CRÍTICO: VACIAR</div>
+                <div class="uptime-badge">R3/R4</div>
             </div>
-            <div class="h-32 mb-4"><canvas id="tdsChart"></canvas></div>
-            
-            <div class="grid grid-cols-2 gap-3 mb-4">
-                <div class="bg-black/20 p-2 rounded-xl">
-                    <p class="text-[8px] text-slate-500 uppercase mb-1">PPM Objetivo</p>
-                    <input type="number" id="tdsTarget" value="800" class="input-dark w-full text-xs text-blue-400">
-                </div>
-                <div class="bg-black/20 p-2 rounded-xl">
-                    <p class="text-[8px] text-slate-500 uppercase mb-1">Límite Alarma</p>
-                    <input type="number" id="tdsMax" value="1200" class="input-dark w-full text-xs text-red-400">
-                </div>
-            </div>
-
-            <div class="flex justify-between items-center text-[10px] font-bold px-1">
-                <div class="flex items-center"><span class="status-led led-off" id="led-nut-a"></span> R3: Nut A</div>
-                <div class="flex items-center"><span class="status-led led-off" id="led-nut-b"></span> R4: Nut B</div>
-                <div class="flex items-center"><span class="status-led led-off" id="led-flush"></span> R9: Vaciado</div>
+            <div class="h-40 mb-4"><canvas id="tdsChart"></canvas></div>
+            <div class="bg-black/20 p-3 rounded-2xl">
+                <div class="flex justify-between mb-2"><span class="relay-tag">R3: Solución A</span> <span class="relay-tag">R4: Solución B</span></div>
+                <input type="number" id="tdsTarget" value="800" class="input-dark w-full text-xs py-1" title="Objetivo PPM">
             </div>
         </section>
 
-        <!-- PANEL TEMPERATURA AGUA -->
+        <!-- PANEL TEMP AGUA (R5/R6) -->
         <section class="glass p-5 rounded-[2.5rem] border-t-4 border-cyan-500">
-            <div class="flex justify-between items-end mb-4">
+            <div class="flex justify-between items-start mb-2">
                 <div>
-                    <h2 class="text-[11px] font-black text-cyan-500 uppercase">Temperatura Agua</h2>
-                    <p class="text-3xl font-black" id="twVal">--°C</p>
+                    <h2 class="text-[11px] font-black text-cyan-500 uppercase">Temp. Solución °C</h2>
+                    <p class="text-3xl font-black" id="twVal">--</p>
                 </div>
+                <div class="uptime-badge">R5/R6</div>
             </div>
-            <div class="h-32 mb-4"><canvas id="twChart"></canvas></div>
-            
-            <div class="grid grid-cols-2 gap-3 mb-4">
-                <div class="bg-black/20 p-2 rounded-xl text-center">
-                    <p class="text-[8px] text-slate-500 uppercase mb-1">Calentar si < </p>
-                    <input type="number" id="twMin" value="18" class="input-dark w-full text-xs">
+            <div class="h-40 mb-4"><canvas id="twChart"></canvas></div>
+            <div class="bg-black/20 p-3 rounded-2xl">
+                <div class="flex justify-between mb-2"><span class="relay-tag">R5: Calentador</span> <span class="relay-tag">R6: Chiller</span></div>
+                <div class="flex gap-2">
+                    <input type="number" id="twMin" value="18" class="input-dark w-full text-xs py-1">
+                    <input type="number" id="twMax" value="24" class="input-dark w-full text-xs py-1">
                 </div>
-                <div class="bg-black/20 p-2 rounded-xl text-center">
-                    <p class="text-[8px] text-slate-500 uppercase mb-1">Enfriar si > </p>
-                    <input type="number" id="twMax" value="24" class="input-dark w-full text-xs">
-                </div>
-            </div>
-            <div class="flex justify-around text-[10px] font-bold">
-                <div class="flex items-center"><span class="status-led led-off" id="led-heat"></span> R5: Calent.</div>
-                <div class="flex items-center"><span class="status-led led-off" id="led-cool"></span> R6: Cooler</div>
             </div>
         </section>
 
-        <!-- PANEL FOTOPERIODO (LUZ) -->
+        <!-- PANEL HUMEDAD AMBIENTE (R8/R9) -->
         <section class="glass p-5 rounded-[2.5rem] border-t-4 border-yellow-500">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-[11px] font-black text-yellow-500 uppercase">Fotoperiodo</h2>
-                <div id="lightIndicator" class="px-2 py-1 rounded bg-slate-800 text-[9px] font-black">SENSOR: OSCURO</div>
-            </div>
-            <div class="h-32 mb-4"><canvas id="lightChart"></canvas></div>
-            
-            <div class="bg-black/20 p-4 rounded-3xl space-y-4">
-                <div class="flex justify-between items-center">
-                    <span class="text-[10px] font-bold text-slate-400 uppercase">Horas de Luz</span>
-                    <div class="flex items-center gap-2">
-                        <input type="number" id="lightHours" value="18" min="1" max="24" class="input-dark w-12 text-sm">
-                        <span class="text-[10px] text-slate-500">h / día</span>
-                    </div>
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <h2 class="text-[11px] font-black text-yellow-500 uppercase">Humedad Ambiente %</h2>
+                    <p class="text-3xl font-black" id="haVal">--</p>
                 </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-[10px] font-bold text-slate-400 uppercase">Inicio Ciclo</span>
+                <div class="uptime-badge">R8/R9</div>
+            </div>
+            <div class="h-40 mb-4"><canvas id="haChart"></canvas></div>
+            <div class="bg-black/20 p-3 rounded-2xl space-y-2">
+                <div class="flex justify-between"><span class="relay-tag">R8: Humidif.</span> <span class="relay-tag">R9: Extractor</span></div>
+                <div id="lightIndicator" class="text-center text-[10px] font-black py-1 rounded-lg bg-slate-800 text-slate-500 uppercase">Sin Datos Lumínicos</div>
+            </div>
+        </section>
+
+        <!-- PANEL TEMP AMBIENTE (R10) -->
+        <section class="glass p-5 rounded-[2.5rem] border-t-4 border-red-500">
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <h2 class="text-[11px] font-black text-red-500 uppercase">Temp. Aire °C</h2>
+                    <p class="text-3xl font-black" id="taVal">--</p>
+                </div>
+                <div class="uptime-badge">R10</div>
+            </div>
+            <div class="h-40 mb-4"><canvas id="taChart"></canvas></div>
+            <div class="bg-black/20 p-3 rounded-2xl">
+                <div class="flex justify-between mb-2"><span class="relay-tag">R10: Ventilación / AC</span></div>
+                <div class="flex gap-2">
+                    <input type="number" id="taMax" value="28" class="input-dark w-full text-xs py-1" title="Máximo Aire">
+                </div>
+            </div>
+        </section>
+
+        <!-- PANEL FOTOPERIODO (R7) -->
+        <section class="glass p-5 rounded-[2.5rem] border-t-4 border-orange-500">
+            <div class="flex justify-between items-start mb-4">
+                <h2 class="text-[11px] font-black text-orange-500 uppercase">Fotoperiodo (R7)</h2>
+                <div class="uptime-badge">R7</div>
+            </div>
+            <div class="space-y-4">
+                <div class="flex justify-between items-center bg-black/20 p-3 rounded-2xl">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">Ciclo (Horas ON)</span>
+                    <input type="number" id="lightHours" value="18" class="input-dark w-16 text-sm">
+                </div>
+                <div class="flex justify-between items-center bg-black/20 p-3 rounded-2xl">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">Hora de Inicio</span>
                     <input type="time" id="lightStart" value="06:00" class="input-dark px-2 text-xs">
                 </div>
-                <div class="flex items-center justify-between pt-2 border-t border-white/5">
-                    <div class="flex items-center"><span class="status-led led-off" id="led-light"></span> R7: Foco</div>
-                    <span id="lightTimeLeft" class="text-[9px] font-mono text-yellow-500 font-bold italic">Cerrando ciclo en 04:20:11</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- AMBIENTE -->
-        <section class="glass p-5 rounded-[2.5rem] border-t-4 border-purple-500">
-            <h2 class="text-[11px] font-black text-purple-500 uppercase mb-4">Humedad y Aire</h2>
-            <div class="grid grid-cols-2 gap-4 h-32 mb-4">
-                <div class="text-center flex flex-col justify-center">
-                    <p class="text-[10px] text-slate-500 font-bold uppercase">Humedad</p>
-                    <p class="text-3xl font-black" id="haVal">--%</p>
-                </div>
-                <div class="text-center flex flex-col justify-center">
-                    <p class="text-[10px] text-slate-500 font-bold uppercase">Temp. Amb</p>
-                    <p class="text-3xl font-black" id="taVal">--°</p>
-                </div>
-            </div>
-            <div class="grid grid-cols-2 gap-2 text-[10px] font-bold">
-                <div class="flex items-center justify-center p-2 bg-black/20 rounded-xl">
-                    <span class="status-led led-off" id="led-hum"></span> R8: Humidif.
-                </div>
-                <div class="flex items-center justify-center p-2 bg-black/20 rounded-xl">
-                    <span class="status-led led-off" id="led-fan"></span> R10: Extractor
+                <div class="flex items-center justify-between px-4 bg-orange-500/10 p-3 rounded-xl border border-orange-500/20">
+                    <div class="flex items-center"><span class="status-led led-off" id="led-light"></span> <span class="text-[10px] font-black">R7: FOCO PRINCIPAL</span></div>
+                    <span id="lightTimeLeft" class="text-[9px] font-mono text-orange-500 font-bold">--:--:--</span>
                 </div>
             </div>
         </section>
@@ -181,21 +151,9 @@
     <!-- FOOTER RELÉS -->
     <footer class="fixed bottom-0 left-0 right-0 p-4 bg-slate-950/90 backdrop-blur-xl border-t border-white/10 z-50">
         <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-            <div class="grid grid-cols-5 md:grid-cols-10 gap-2 flex-1">
-                <script>
-                    for(let i=1; i<=10; i++){
-                        document.write(`
-                            <button onclick="manualToggle(${i})" class="flex flex-col items-center p-2 rounded-xl bg-slate-900 border border-white/5 active:scale-95 transition-all">
-                                <span class="text-[8px] font-black text-slate-500">R${i}</span>
-                                <div id="footer-led-${i}" class="w-2 h-2 rounded-full bg-slate-700 mt-1"></div>
-                            </button>
-                        `);
-                    }
-                </script>
-            </div>
-            <div class="text-[9px] font-black text-slate-500 uppercase flex gap-4">
-                <span>Ciclo: 30s</span>
-                <span>Mezcla: <span id="stabilizationTimer">--</span>s</span>
+            <div class="grid grid-cols-5 md:grid-cols-10 gap-2 flex-1" id="footerRelays"></div>
+            <div class="hidden md:block text-[9px] font-black text-slate-600 uppercase tracking-widest text-right">
+                Sistema de Protección <br> Activo 24/7
             </div>
         </div>
     </footer>
@@ -205,28 +163,49 @@
         const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
         const CHAR_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
 
-        // CONFIGURACIÓN DE GRÁFICOS (Métrica 30s)
-        const commonOptions = (color) => ({
-            responsive: true, maintainAspectRatio: false,
-            scales: { x: { display: false }, y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#475569', font: { size: 8 } } } },
-            plugins: { legend: { display: false } },
-            elements: { line: { tension: 0.3, borderWidth: 2, borderColor: color }, point: { radius: 0 } }
-        });
+        // CONFIGURACIÓN GRÁFICOS
+        const chartColors = {
+            ph: '#10b981',
+            tds: '#3b82f6',
+            tw: '#06b6d4',
+            ha: '#eab308',
+            ta: '#ef4444'
+        };
 
         const mkChart = (id, color) => new Chart(document.getElementById(id), {
             type: 'line',
-            data: { labels: [], datasets: [{ data: [], borderColor: color, fill: true, backgroundColor: color + '05' }] },
-            options: commonOptions(color)
+            data: { labels: [], datasets: [{ data: [], borderColor: color, fill: true, backgroundColor: color + '15', tension: 0.4, borderWidth: 2, pointRadius: 0 }] },
+            options: { 
+                responsive: true, maintainAspectRatio: false,
+                scales: { 
+                    x: { grid: { display: false }, ticks: { color: '#475569', font: { size: 7 }, maxTicksLimit: 6 } },
+                    y: { grid: { color: 'rgba(255, 255, 255, 0.03)' }, ticks: { color: '#94a3b8', font: { size: 9 } } }
+                },
+                plugins: { legend: { display: false } }
+            }
         });
 
         const charts = {
-            ph: mkChart('phChart', '#10b981'),
-            tds: mkChart('tdsChart', '#3b82f6'),
-            tw: mkChart('twChart', '#06b6d4'),
-            ha: mkChart('lightChart', '#eab308') // Reutilizamos para luz/humedad
+            ph: mkChart('phChart', chartColors.ph),
+            tds: mkChart('tdsChart', chartColors.tds),
+            tw: mkChart('twChart', chartColors.tw),
+            ha: mkChart('haChart', chartColors.ha),
+            ta: mkChart('taChart', chartColors.ta)
         };
 
-        // LÓGICA DE TIEMPO
+        // RENDERIZAR BOTONES DE RELÉS
+        const relayLabels = ["R1: Ácido", "R2: Base", "R3: Nutri A", "R4: Nutri B", "R5: Calent.", "R6: Chiller", "R7: Foco", "R8: Humid.", "R9: Extrac.", "R10: Vent."];
+        const footerRelays = document.getElementById('footerRelays');
+        for(let i=1; i<=10; i++) {
+            footerRelays.innerHTML += `
+                <button onclick="manualToggle(${i})" class="flex flex-col items-center p-2 rounded-xl bg-slate-900 border border-white/5 active:scale-95 transition-all">
+                    <span class="text-[7px] font-black text-slate-500 uppercase">${relayLabels[i-1].split(': ')[1]}</span>
+                    <div id="footer-led-${i}" class="w-2 h-2 rounded-full bg-slate-700 mt-1 shadow-sm"></div>
+                </button>
+            `;
+        }
+
+        // RELOJ Y CICLO
         setInterval(() => {
             const now = new Date();
             document.getElementById('clock').innerText = now.toLocaleTimeString('es-ES', { hour12: false });
@@ -234,95 +213,72 @@
         }, 1000);
 
         function updateFotoperiodo(now) {
-            const startStr = document.getElementById('lightStart').value;
+            const [h, m] = document.getElementById('lightStart').value.split(':').map(Number);
             const hours = parseInt(document.getElementById('lightHours').value);
-            const [h, m] = startStr.split(':').map(Number);
-            
-            const startDate = new Date(now);
-            startDate.setHours(h, m, 0);
-            
-            const endDate = new Date(startDate);
-            endDate.setHours(startDate.getHours() + hours);
-            
-            const isOn = now >= startDate && now < endDate;
-            const led = document.getElementById('led-light');
-            led.className = isOn ? "status-led led-on" : "status-led led-off";
-            
+            const start = new Date(now); start.setHours(h, m, 0);
+            const end = new Date(start); end.setHours(start.getHours() + hours);
+            const isOn = now >= start && now < end;
+            document.getElementById('led-light').className = isOn ? "status-led led-on" : "status-led led-off";
             const label = document.getElementById('lightTimeLeft');
             if (isOn) {
-                const diff = endDate - now;
-                label.innerText = `Finaliza en: ${new Date(diff).toISOString().substr(11, 8)}`;
-            } else {
-                label.innerText = "Ciclo de oscuridad";
-            }
-        }
-
-        async function manualToggle(r) {
-            await sendCmd({ p: r, s: 1, d: 5 }); // Test de 5 segundos
-        }
-
-        async function sendCmd(obj) {
-            if(!characteristic) return;
-            try {
-                const data = new TextEncoder().encode(JSON.stringify(obj));
-                await characteristic.writeValue(data);
-            } catch (err) { console.error(err); }
+                const diff = end - now;
+                const hL = Math.floor(diff / 3600000);
+                const mL = Math.floor((diff % 3600000) / 60000);
+                label.innerText = `ON: ${hL}h ${mL}m REST`;
+            } else { label.innerText = "OFF: NOCTURNO"; }
         }
 
         function updateUI(d) {
-            // Actualización de valores
-            document.getElementById('phVal').innerText = d.ph.toFixed(2);
-            document.getElementById('tdsVal').innerText = d.tds;
-            document.getElementById('twVal').innerText = d.tw.toFixed(1);
-            document.getElementById('haVal').innerText = d.ha.toFixed(0);
-            document.getElementById('taVal').innerText = d.ta.toFixed(1);
+            const time = new Date().toLocaleTimeString('es-ES', { minute: '2-digit', second: '2-digit' });
+            if(d.ph !== undefined) { document.getElementById('phVal').innerText = d.ph.toFixed(2); pushData('ph', d.ph, time); }
+            if(d.tds !== undefined) { document.getElementById('tdsVal').innerText = d.tds; pushData('tds', d.tds, time); }
+            if(d.tw !== undefined) { document.getElementById('twVal').innerText = d.tw.toFixed(1) + "°"; pushData('tw', d.tw, time); }
+            if(d.ha !== undefined) { document.getElementById('haVal').innerText = d.ha.toFixed(0) + "%"; pushData('ha', d.ha, time); }
+            if(d.ta !== undefined) { document.getElementById('taVal').innerText = d.ta.toFixed(1) + "°"; pushData('ta', d.ta, time); }
             
-            const isDark = d.light === 1; // Ajustado: Tu sensor da oscuro cuando está prendido
-            document.getElementById('lightIndicator').innerText = isDark ? "SENSOR: LUZ DETECTADA" : "SENSOR: OSCURIDAD";
-            document.getElementById('lightIndicator').className = isDark ? 
-                "px-2 py-1 rounded bg-yellow-500/20 text-yellow-500 text-[9px] font-black border border-yellow-500/30" : 
-                "px-2 py-1 rounded bg-slate-800 text-slate-500 text-[9px] font-black";
-
-            // Alarmas PPM
-            const tdsAlarm = document.getElementById('tdsAlarm');
-            if(d.tds > parseInt(document.getElementById('tdsMax').value)) {
-                tdsAlarm.classList.remove('hidden');
-            } else {
-                tdsAlarm.classList.add('hidden');
+            if(d.light !== undefined) {
+                const ind = document.getElementById('lightIndicator');
+                ind.innerText = d.light === 1 ? "S: LUZ DETECTADA" : "S: OSCURIDAD";
+                ind.className = d.light === 1 ? "text-center text-[10px] font-black py-1 rounded-lg bg-yellow-500/20 text-yellow-500 uppercase" : "text-center text-[10px] font-black py-1 rounded-lg bg-slate-800 text-slate-500 uppercase";
             }
 
-            // Actualizar Gráficos (Métrica 30 seg gestionada por el tiempo de recepción)
-            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const map = { ph: d.ph, tds: d.tds, tw: d.tw, ha: d.ha };
-            Object.keys(charts).forEach(key => {
-                const c = charts[key];
-                if(c.data.labels.length > 30) { c.data.labels.shift(); c.data.datasets[0].data.shift(); }
-                c.data.labels.push(time);
-                c.data.datasets[0].data.push(map[key]);
-                c.update('none');
-            });
+            // Actualizar LEDs de relés si vienen en el JSON
+            if(d.r) {
+                d.r.forEach((state, index) => {
+                    const led = document.getElementById(`footer-led-${index + 1}`);
+                    if(led) led.className = `w-2 h-2 rounded-full mt-1 ${state ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-slate-700'}`;
+                });
+            }
+        }
+
+        function pushData(key, val, label) {
+            const c = charts[key];
+            if(c.data.labels.length > 30) { c.data.labels.shift(); c.data.datasets[0].data.shift(); }
+            c.data.labels.push(label);
+            c.data.datasets[0].data.push(val);
+            c.update('none');
+        }
+
+        async function manualToggle(r) { await sendCmd({ p: r, s: 1, d: 5 }); }
+        async function sendCmd(obj) {
+            if(!characteristic) return;
+            try { await characteristic.writeValue(new TextEncoder().encode(JSON.stringify(obj))); } catch (err) {}
         }
 
         document.getElementById('connectBtn').onclick = async () => {
             try {
-                const device = await navigator.bluetooth.requestDevice({ 
-                    filters: [{ name: 'HIDRO_PRO_TOTAL' }], 
-                    optionalServices: [SERVICE_UUID] 
-                });
+                const device = await navigator.bluetooth.requestDevice({ filters: [{ name: 'HIDRO_PRO_TOTAL' }], optionalServices: [SERVICE_UUID] });
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService(SERVICE_UUID);
                 characteristic = await service.getCharacteristic(CHAR_UUID);
-                
                 await characteristic.startNotifications();
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
-                    const data = JSON.parse(new TextDecoder().decode(e.target.value));
-                    updateUI(data);
+                    try { updateUI(JSON.parse(new TextDecoder().decode(e.target.value))); } catch(ex) {}
                 });
-                
-                document.getElementById('bleStatus').innerText = "VINCULADO";
+                document.getElementById('bleStatus').innerText = "ONLINE";
                 document.getElementById('bleStatus').className = "text-[9px] text-emerald-500 font-black";
-                document.getElementById('connectBtn').innerText = "SISTEMA ACTIVO";
-            } catch (err) { console.error(err); }
+                document.getElementById('connectBtn').innerText = "VINCULADO";
+            } catch (err) {}
         };
     </script>
 </body>
