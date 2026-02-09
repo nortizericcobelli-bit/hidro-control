@@ -3,42 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HIDROPRO V3.9 - Panel de Control</title>
-    <!-- Cargamos React y Tailwind desde CDNs para que funcione en cualquier navegador -->
+    <title>HIDROPRO V4.0 - Control Total</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { background-color: #020617; color: #cbd5e1; font-family: sans-serif; }
-        .glass-card { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(30, 41, 59, 1); }
-        @keyframes pulse-custom { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .animate-pulse-fast { animation: pulse-custom 1s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono&display=swap');
+        
+        body { 
+            background-color: #020617; 
+            color: #f1f5f9; 
+            font-family: 'Inter', sans-serif;
+            background-image: radial-gradient(circle at 50% -20%, #1e1b4b 0%, #020617 80%);
+            min-height: 100vh;
+        }
+        .glass-card { 
+            background: rgba(15, 23, 42, 0.6); 
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05); 
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .relay-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+        @media (max-width: 640px) { .relay-grid { grid-template-columns: repeat(2, 1fr); } }
+        
+        /* Animaciones para el modal */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-fade { animation: fadeIn 0.2s ease-out; }
+        .animate-slide { animation: slideUp 0.3s ease-out; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect } = React;
 
-        // Componente de icono simplificado para Lucide
         const Icon = ({ name, size = 20, className = "" }) => {
             useEffect(() => {
-                if (window.lucide) {
-                    window.lucide.createIcons();
-                }
+                if (window.lucide) window.lucide.createIcons();
             }, [name]);
             return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
         };
 
-        const Sparkline = ({ data, color }) => {
+        const Sparkline = ({ data, color, width = 120 }) => {
             if (!data || data.length < 2) return null;
             const min = Math.min(...data);
             const max = Math.max(...data);
-            const range = max - min || 1;
-            const width = 120;
+            const range = (max - min) || 1;
             const height = 40;
             const points = data.map((val, i) => {
                 const x = (i / (data.length - 1)) * width;
@@ -48,161 +68,208 @@
 
             return (
                 <svg width={width} height={height} className="overflow-visible">
-                    <polyline
-                        fill="none"
-                        stroke={color}
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        points={points}
-                    />
+                    <path d={`M ${points}`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
             );
         };
 
+        const ControlModal = ({ isOpen, onClose, title }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade text-slate-200">
+                    <div className="glass-card w-full max-w-md p-8 rounded-[2.5rem] border-white/10 animate-slide">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold italic tracking-tight">Programar {title}</h2>
+                            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                <Icon name="x" size={20} />
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-[10px] uppercase font-bold text-slate-500 block mb-2">Punto de consigna (Set Point)</label>
+                                <input type="number" className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Valor objetivo..." />
+                            </div>
+                            <div>
+                                <label className="text-[10px] uppercase font-bold text-slate-500 block mb-2">Histéresis (Margen)</label>
+                                <input type="number" className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="0.5" />
+                            </div>
+                            <div className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl">
+                                <input type="checkbox" className="w-5 h-5 accent-indigo-500" defaultChecked />
+                                <span className="text-sm">Habilitar Control Automático</span>
+                            </div>
+                        </div>
+                        <button onClick={onClose} className="w-full mt-8 bg-indigo-600 hover:bg-indigo-500 py-4 rounded-2xl font-bold transition-all">Guardar Configuración</button>
+                    </div>
+                </div>
+            );
+        };
+
         const App = () => {
-            const apiKey = ""; // La plataforma inyectará la clave automáticamente
             const [data, setData] = useState({
-                ph: 6.2, tw: 22.8, tds: 580, ta: 26.5, ha: 55, nv: 90,
+                ph: 6.2, tw: 22.8, tds: 580, ta: 24.5, ha: 62, nv: 88,
                 reles: Array(10).fill(0)
             });
-
             const [history, setHistory] = useState({
-                ph: Array(20).fill(6.2),
-                tds: Array(20).fill(580),
-                tw: Array(20).fill(22.8),
-                ta: Array(20).fill(26.5),
-                ha: Array(20).fill(55)
+                ph: Array(20).fill(6.2), tds: Array(20).fill(580),
+                tw: Array(20).fill(22.8), ta: Array(20).fill(24.5), ha: Array(20).fill(62)
             });
-
-            const [aiAnalysis, setAiAnalysis] = useState("");
-            const [isAnalyzing, setIsAnalyzing] = useState(false);
+            const [modal, setModal] = useState({ open: false, title: "" });
 
             useEffect(() => {
-                const timer = setInterval(() => {
+                const interval = setInterval(() => {
                     setData(prev => {
-                        const newPh = Number((6.1 + Math.random() * 0.2).toFixed(2));
-                        const newTds = Math.floor(570 + Math.random() * 20);
-                        const newTw = Number((22.5 + Math.random() * 0.6).toFixed(1));
-                        const newTa = Number((26.0 + Math.random() * 1.0).toFixed(1));
-                        const newHa = Math.floor(52 + Math.random() * 6);
-
+                        const nPh = Number((6.1 + Math.random() * 0.2).toFixed(2));
+                        const nTds = Math.floor(570 + Math.random() * 20);
+                        const nTw = Number((22.4 + Math.random() * 0.6).toFixed(1));
+                        const nTa = Number((23.8 + Math.random() * 1.2).toFixed(1));
+                        const nHa = Math.floor(58 + Math.random() * 6);
+                        
                         setHistory(h => ({
-                            ph: [...h.ph.slice(1), newPh],
-                            tds: [...h.tds.slice(1), newTds],
-                            tw: [...h.tw.slice(1), newTw],
-                            ta: [...h.ta.slice(1), newTa],
-                            ha: [...h.ha.slice(1), newHa],
+                            ph: [...h.ph.slice(1), nPh],
+                            tds: [...h.tds.slice(1), nTds],
+                            tw: [...h.tw.slice(1), nTw],
+                            ta: [...h.ta.slice(1), nTa],
+                            ha: [...h.ha.slice(1), nHa],
                         }));
 
-                        const updatedReles = [
-                            newPh > 6.5 ? 1 : 0, 
-                            newPh < 5.5 ? 1 : 0, 
-                            newTds < 500 ? 1 : 0, 
-                            newTds > 800 ? 1 : 0,
-                            0, 0, 1, 0, 0, 0
-                        ];
-
                         return {
-                            ...prev,
-                            ph: newPh, tds: newTds, tw: newTw, ta: newTa, ha: newHa,
-                            nv: Math.max(0, prev.nv - 0.01),
-                            reles: updatedReles
+                            ...prev, ph: nPh, tds: nTds, tw: nTw, ta: nTa, ha: nHa,
+                            nv: Math.max(0, prev.nv - 0.005),
+                            reles: [nPh>6.5?1:0, nPh<5.8?1:0, nTds<500?1:0, nTds<500?1:0, nTw>25?1:0, nTw<18?1:0, 1, nHa<50?1:0, nTa>28?1:0, 0]
                         };
                     });
-                }, 3000);
-                return () => clearInterval(timer);
+                }, 4000);
+                return () => clearInterval(interval);
             }, []);
 
-            const analyzeWithGemini = async () => {
-                setIsAnalyzing(true);
-                setAiAnalysis("");
-                const prompt = `Analiza: pH ${data.ph}, TDS ${data.tds}ppm, Temp ${data.tw}C. Indica estado y 1 consejo corto.`;
+            const openSettings = (title) => setModal({ open: true, title });
 
-                let retries = 0;
-                const callApi = async () => {
-                    try {
-                        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                        });
-                        const result = await resp.json();
-                        setAiAnalysis(result.candidates?.[0]?.content?.parts?.[0]?.text || "Error en respuesta.");
-                    } catch (e) {
-                        if (retries < 3) { retries++; setTimeout(callApi, 2000); }
-                        else setAiAnalysis("No se pudo conectar con Gemini.");
-                    } finally { setIsAnalyzing(false); }
-                };
-                callApi();
-            };
+            const CardHeader = ({ icon, color, label, title }) => (
+                <div className="flex justify-between items-start mb-6">
+                    <div className="flex gap-4 items-center">
+                        <div className={`p-3 rounded-2xl bg-${color}-500/10 text-${color}-500`}>
+                            <Icon name={icon} />
+                        </div>
+                        <div>
+                            <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-widest">{label}</h3>
+                            <p className="text-white font-bold">{title}</p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => openSettings(title)}
+                        className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-colors border border-white/5"
+                    >
+                        <Icon name="settings" size={16} />
+                    </button>
+                </div>
+            );
+
+            const labels = ["pH-", "pH+", "NUT-A", "NUT-B", "CHILL", "HEAT", "FLOW", "HUMID", "VENT", "AUX"];
 
             return (
-                <div className="p-4 md:p-8 max-w-6xl mx-auto">
-                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
+                <div className="p-4 md:p-10 max-w-7xl mx-auto pb-24">
+                    <header className="flex justify-between items-end mb-12">
                         <div>
-                            <h1 className="text-3xl font-black text-white italic tracking-tighter">
-                                HIDRO<span className="text-emerald-500">PRO</span> V3.9
-                            </h1>
-                            <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Monitoreo Inteligente de Cultivos</p>
+                            <h1 className="text-4xl font-black italic tracking-tighter text-white">HIDRO<span className="text-emerald-500">PRO</span> <span className="text-xs not-italic text-slate-500 mono">v4.0_STABLE</span></h1>
+                            <p className="text-[10px] uppercase tracking-[0.4em] font-bold text-slate-500 mt-2">Sistema de Control Automatizado</p>
                         </div>
-                        <button 
-                            onClick={analyzeWithGemini}
-                            disabled={isAnalyzing}
-                            className="mt-4 md:mt-0 flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-2xl font-bold transition-all disabled:opacity-50"
-                        >
-                            <Icon name="sparkles" size={16} />
-                            {isAnalyzing ? "Analizando..." : "Consultar IA"}
-                        </button>
+                        <div className="hidden md:block glass-card px-4 py-2 rounded-full border-white/10">
+                            <span className="text-[10px] mono text-emerald-500">ESTADO: NOMINAL // BUFFER: OK</span>
+                        </div>
                     </header>
 
-                    {aiAnalysis && (
-                        <div className="bg-indigo-900/40 border border-indigo-500/50 p-6 rounded-[2rem] mb-8 animate-pulse-slow">
-                            <h3 className="text-indigo-400 text-xs font-black uppercase mb-2">Diagnóstico de Inteligencia Artificial</h3>
-                            <p className="text-white italic">{aiAnalysis}</p>
-                        </div>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Tarjeta pH */}
-                        <div className="glass-card p-6 rounded-[2.5rem]">
-                            <div className="flex justify-between items-center mb-4 text-emerald-400">
-                                <Icon name="droplet" />
-                                <span className="text-[10px] font-mono opacity-50">S-01</span>
-                            </div>
-                            <p className="text-slate-400 text-xs">Nivel de pH</p>
-                            <div className="flex items-end justify-between">
-                                <h2 className="text-4xl font-black text-white">{data.ph}</h2>
+                    {/* Fila Principal de Tableros */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        {/* pH */}
+                        <div className="glass-card p-8 rounded-[3rem]">
+                            <CardHeader icon="droplet" color="emerald" label="Sensor 01" title="Nivel de pH" />
+                            <div className="flex items-end justify-between mt-4">
+                                <h2 className="text-5xl font-black text-white italic leading-none">{data.ph}</h2>
                                 <Sparkline data={history.ph} color="#10b981" />
                             </div>
                         </div>
 
-                        {/* Tarjeta TDS */}
-                        <div className="glass-card p-6 rounded-[2.5rem]">
-                            <div className="flex justify-between items-center mb-4 text-blue-400">
-                                <Icon name="zap" />
-                                <span className="text-[10px] font-mono opacity-50">S-02</span>
-                            </div>
-                            <p className="text-slate-400 text-xs">Sólidos Disueltos (TDS)</p>
-                            <div className="flex items-end justify-between">
-                                <h2 className="text-4xl font-black text-white">{data.tds}<span className="text-sm font-normal opacity-50 ml-1">ppm</span></h2>
+                        {/* TDS */}
+                        <div className="glass-card p-8 rounded-[3rem]">
+                            <CardHeader icon="zap" color="blue" label="Sensor 02" title="Nutrientes" />
+                            <div className="flex items-end justify-between mt-4">
+                                <h2 className="text-5xl font-black text-white italic leading-none">{data.tds}<span className="text-sm not-italic opacity-30 ml-1">ppm</span></h2>
                                 <Sparkline data={history.tds} color="#3b82f6" />
                             </div>
                         </div>
 
-                        {/* Tanque */}
-                        <div className="bg-indigo-600 p-6 rounded-[2.5rem] text-white">
-                            <Icon name="waves" className="mb-4 opacity-50" />
-                            <p className="text-xs opacity-80">Nivel de Solución</p>
-                            <h2 className="text-4xl font-black mb-4">{data.nv.toFixed(1)}%</h2>
-                            <div className="h-2 w-full bg-white/20 rounded-full overflow-hidden">
-                                <div className="h-full bg-white transition-all duration-500" style={{width: `${data.nv}%`}}></div>
+                        {/* Temperatura Agua */}
+                        <div className="glass-card p-8 rounded-[3rem]">
+                            <CardHeader icon="thermometer" color="cyan" label="Sensor 03" title="Temp. Agua" />
+                            <div className="flex items-end justify-between mt-4">
+                                <h2 className="text-5xl font-black text-white italic leading-none">{data.tw}<span className="text-sm not-italic opacity-30 ml-1">°C</span></h2>
+                                <Sparkline data={history.tw} color="#06b6d4" />
+                            </div>
+                        </div>
+
+                        {/* Ambiente (Temp + Hum) JUNTOS */}
+                        <div className="glass-card p-8 rounded-[3rem]">
+                            <CardHeader icon="cloud-sun" color="orange" label="Ambiente" title="Aire / Hum" />
+                            <div className="space-y-4 mt-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-2xl font-black italic text-white">{data.ta}°C</span>
+                                    <Sparkline data={history.ta} color="#f97316" width={80} />
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-2xl font-black italic text-white">{data.ha}%</span>
+                                    <Sparkline data={history.ha} color="#0ea5e9" width={80} />
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <footer className="mt-20 text-center opacity-20 text-[10px] font-mono uppercase tracking-[0.4em]">
-                        Hardware HidroPro V4.1 OK - Datos en Tiempo Real
+                    {/* Tanque y Nivel */}
+                    <div className="glass-card p-8 rounded-[3rem] mb-8 flex flex-col md:flex-row gap-8 items-center">
+                        <div className="w-full md:w-1/3">
+                             <CardHeader icon="waves" color="indigo" label="Depósito" title="Nivel de Tanque" />
+                             <h2 className="text-4xl font-black italic">{data.nv.toFixed(1)}%</h2>
+                        </div>
+                        <div className="w-full flex-1">
+                            <div className="h-12 bg-white/5 rounded-2xl p-2 relative overflow-hidden border border-white/5">
+                                <div 
+                                    className="h-full bg-gradient-to-r from-blue-600 to-indigo-400 rounded-xl transition-all duration-1000 shadow-[0_0_15px_rgba(79,70,229,0.4)]" 
+                                    style={{width: `${data.nv}%`}}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Actuadores / Relés */}
+                    <div className="glass-card p-8 rounded-[3rem]">
+                        <div className="flex justify-between items-center mb-8 px-2">
+                            <div className="flex items-center gap-3">
+                                <Icon name="cpu" className="text-slate-500" />
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Panel de Control de Potencia (Relés)</h3>
+                            </div>
+                            <button onClick={() => openSettings("Relés")} className="p-2 hover:bg-white/5 rounded-xl border border-white/5 text-slate-500"><Icon name="settings" size={16} /></button>
+                        </div>
+                        <div className="relay-grid">
+                            {data.reles.map((estado, idx) => (
+                                <div key={idx} className={`p-4 rounded-2xl border transition-all duration-500 ${estado ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[inset_0_0_12px_rgba(16,185,129,0.05)]' : 'bg-slate-800/20 border-white/5'}`}>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <div className={`h-1.5 w-1.5 rounded-full ${estado ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]' : 'bg-slate-700'}`}></div>
+                                        <span className="text-[8px] mono opacity-30">{idx+1}</span>
+                                    </div>
+                                    <p className={`text-[10px] font-black mb-1 truncate ${estado ? 'text-emerald-400' : 'text-slate-600'}`}>{labels[idx]}</p>
+                                    <p className="text-[9px] font-bold opacity-40 italic">{estado ? 'ON' : 'OFF'}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <ControlModal 
+                        isOpen={modal.open} 
+                        onClose={() => setModal({ open: false, title: "" })} 
+                        title={modal.title} 
+                    />
+
+                    <footer className="mt-16 text-center border-t border-white/5 pt-10">
+                        <p className="text-[9px] mono uppercase tracking-[0.8em] text-slate-700">Control de Sistema Hidropónico de Alta Precisión // 2024-2025</p>
                     </footer>
                 </div>
             );
