@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Droplet, 
   Thermometer, 
@@ -6,9 +6,9 @@ import {
   Activity, 
   Waves, 
   Zap, 
-  Settings,
-  Power,
-  TrendingUp
+  Settings, 
+  Power, 
+  TrendingUp 
 } from 'lucide-react';
 
 const App = () => {
@@ -22,7 +22,6 @@ const App = () => {
     reles: Array(10).fill(0)
   });
 
-  // Historial para las gráficas (últimos 20 puntos)
   const [history, setHistory] = useState({
     ph: Array(20).fill(6.2),
     tds: Array(20).fill(580),
@@ -35,58 +34,51 @@ const App = () => {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setData(prev => {
-        const newPh = Number((6.1 + Math.random() * 0.2).toFixed(2));
-        const newTds = Math.floor(570 + Math.random() * 20);
-        const newTw = Number((22.5 + Math.random() * 0.6).toFixed(1));
-        const newTa = Number((26.0 + Math.random() * 1.0).toFixed(1));
-        const newHa = Math.floor(52 + Math.random() * 6);
-        
-        // Actualizar Historial
-        setHistory(h => ({
-          ph: [...h.ph.slice(1), newPh],
-          tds: [...h.tds.slice(1), newTds],
-          tw: [...h.tw.slice(1), newTw],
-          ta: [...h.ta.slice(1), newTa],
-          ha: [...h.ha.slice(1), newHa],
-        }));
+      const newPh = Number((6.1 + Math.random() * 0.2).toFixed(2));
+      const newTds = Math.floor(570 + Math.random() * 20);
+      const newTw = Number((22.5 + Math.random() * 0.6).toFixed(1));
+      const newTa = Number((26.0 + Math.random() * 1.0).toFixed(1));
+      const newHa = Math.floor(52 + Math.random() * 6);
 
-        const newReles = [
-          newPh > 6.5 ? 1 : 0,  
-          newPh < 5.5 ? 1 : 0,  
+      setHistory(h => ({
+        ph: [...h.ph.slice(1), newPh],
+        tds: [...h.tds.slice(1), newTds],
+        tw: [...h.tw.slice(1), newTw],
+        ta: [...h.ta.slice(1), newTa],
+        ha: [...h.ha.slice(1), newHa],
+      }));
+
+      setData(prev => ({
+        ph: newPh,
+        tds: newTds,
+        tw: newTw,
+        ta: newTa,
+        ha: newHa,
+        nv: Math.max(0, prev.nv - 0.02),
+        reles: [
+          newPh > 6.5 ? 1 : 0, 
+          newPh < 5.5 ? 1 : 0, 
           newTds < 500 ? 1 : 0, 
           newTds < 500 ? 1 : 0, 
           newTw < 19 ? 1 : 0, 
           newTw > 25 ? 1 : 0, 
-          1,                    
+          1, 
           newHa < 50 ? 1 : 0, 
           newHa > 70 ? 1 : 0, 
-          newTa > 28 ? 1 : 0  
-        ];
-
-        return {
-          ph: newPh,
-          tds: newTds,
-          tw: newTw,
-          ta: newTa,
-          ha: newHa,
-          nv: Math.max(0, prev.nv - 0.02),
-          reles: newReles
-        };
-      });
+          newTa > 28 ? 1 : 0
+        ]
+      }));
       setLastUpdate(new Date());
     }, 2000);
     return () => clearInterval(timer);
   }, []);
 
-  // Componente de Micro Gráfica SVG
   const Sparkline = ({ data, color }) => {
     const min = Math.min(...data);
     const max = Math.max(...data);
     const range = max - min || 1;
-    const width = 120;
-    const height = 40;
-    
+    const width = 100;
+    const height = 30;
     const points = data.map((val, i) => {
       const x = (i / (data.length - 1)) * width;
       const y = height - ((val - min) / range) * height;
@@ -94,7 +86,7 @@ const App = () => {
     }).join(' ');
 
     return (
-      <svg width={width} height={height} className="opacity-60 overflow-visible">
+      <svg width={width} height={height} className="opacity-80 overflow-visible">
         <polyline
           fill="none"
           stroke={color}
@@ -103,37 +95,38 @@ const App = () => {
           strokeLinejoin="round"
           points={points}
         />
-        <circle cx={width} cy={height - ((data[data.length-1] - min) / range) * height} r="3" fill={color} className="animate-pulse" />
+        <circle 
+          cx={width} 
+          cy={height - ((data[data.length-1] - min) / range) * height} 
+          r="3" 
+          fill={color} 
+          className="animate-pulse" 
+        />
       </svg>
     );
   };
 
   const StatusCard = ({ icon: Icon, title, value, unit, color, hexColor, label, reles, historyData }) => (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-5 hover:border-slate-700 transition-all group overflow-hidden relative">
-      <div className="flex justify-between items-start mb-4 relative z-10">
-        <div className={`p-3 rounded-2xl bg-slate-800 text-${color}-500 group-hover:scale-110 transition-transform`}>
-          <Icon size={24} />
+    <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 hover:border-slate-700 transition-all relative overflow-hidden">
+      <div className="flex justify-between items-start mb-4">
+        <div className={`p-3 rounded-2xl bg-slate-800 text-${color}-500`}>
+          <Icon size={22} />
         </div>
         <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">{label}</span>
       </div>
-      
-      <p className="text-slate-400 text-xs font-semibold mb-1 relative z-10">{title}</p>
-      
-      <div className="flex items-end justify-between mb-6 relative z-10">
-        <div className="flex items-baseline gap-2">
-          <span className="text-5xl font-black tracking-tighter text-slate-100">{value}</span>
-          <span className={`text-${color}-500 font-bold text-xs uppercase`}>{unit}</span>
+      <p className="text-slate-400 text-xs font-semibold mb-1">{title}</p>
+      <div className="flex items-end justify-between mb-6">
+        <div className="flex items-baseline gap-1">
+          <span className="text-4xl font-black tracking-tighter text-slate-100">{value}</span>
+          <span className={`text-${color}-500 font-bold text-[10px] uppercase`}>{unit}</span>
         </div>
-        <div className="pb-2">
-          <Sparkline data={historyData} color={hexColor} />
-        </div>
+        <Sparkline data={historyData} color={hexColor} />
       </div>
-      
-      <div className="space-y-2 relative z-10">
+      <div className="space-y-2">
         {reles.map((r, i) => (
-          <div key={i} className={`flex items-center justify-between p-2 rounded-xl border ${r.active ? `bg-${color}-500/10 border-${color}-500/30` : 'bg-black/20 border-slate-800/50'}`}>
-            <span className="text-[10px] font-bold text-slate-400 uppercase">R{r.id} - {r.name}</span>
-            <div className={`h-2 w-2 rounded-full ${r.active ? `bg-${color}-500 shadow-[0_0_8px_${hexColor}] animate-pulse` : 'bg-slate-700'}`}></div>
+          <div key={i} className={`flex items-center justify-between p-2 rounded-xl border ${r.active ? `bg-${color}-500/10 border-${color}-500/20` : 'bg-black/20 border-slate-800/50'}`}>
+            <span className="text-[9px] font-bold text-slate-500 uppercase">R{r.id} - {r.name}</span>
+            <div className={`h-2 w-2 rounded-full ${r.active ? `bg-${color}-500 shadow-[0_0_8px_${hexColor}] animate-pulse` : 'bg-slate-800'}`}></div>
           </div>
         ))}
       </div>
@@ -141,194 +134,106 @@ const App = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 p-4 md:p-10 font-sans selection:bg-emerald-500/30">
-      {/* Header */}
-      <header className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+    <div className="min-h-screen bg-[#020617] text-slate-200 p-6 font-sans">
+      <header className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></div>
-            <h1 className="text-3xl font-black italic tracking-tighter text-white">
-              HIDRO<span className="text-emerald-500">PRO</span> <span className="text-slate-500 not-italic text-xl">V3.9</span>
+            <h1 className="text-2xl font-black italic tracking-tighter text-white">
+              HIDRO<span className="text-emerald-500">PRO</span> <span className="text-slate-500 not-italic text-lg">V3.9</span>
             </h1>
           </div>
-          <p className="text-slate-500 text-[10px] font-mono uppercase tracking-[0.3em]">Temporal Analytics Engine | Active Monitoring</p>
+          <p className="text-slate-500 text-[9px] font-mono uppercase tracking-[0.3em]">Visual Metrics Engine Interface</p>
         </div>
-
-        <div className="flex gap-4">
-          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-[10px] text-slate-500 font-bold uppercase">Estado Local</p>
-              <p className="text-emerald-400 text-xs font-mono tracking-widest flex items-center gap-2">
-                <TrendingUp size={12} /> REAL-TIME ACTIVE
-              </p>
-            </div>
-            <Activity className="text-emerald-500" size={20} />
-          </div>
+        <div className="bg-slate-900 border border-slate-800 px-4 py-2 rounded-2xl flex items-center gap-3">
+          <Activity size={16} className="text-emerald-500" />
+          <span className="text-[10px] font-mono text-emerald-400">STATUS: LIVE STREAMING</span>
         </div>
       </header>
 
-      {/* Main Grid */}
       <main className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        
-        {/* pH Control */}
         <StatusCard 
-          icon={Droplet}
-          title="Potencial de Hidrógeno"
-          value={data.ph.toFixed(2)}
-          unit="pH"
-          color="emerald"
-          hexColor="#10b981"
-          label="Sensor 01"
-          historyData={history.ph}
-          reles={[
-            { id: 1, name: "Inyector Ácido", active: data.reles[0] },
-            { id: 2, name: "Inyector Base", active: data.reles[1] }
-          ]}
+          icon={Droplet} title="Nivel pH" value={data.ph.toFixed(2)} unit="pH" color="emerald" hexColor="#10b981" label="CH-01" historyData={history.ph}
+          reles={[{ id: 1, name: "Ácido", active: data.reles[0] }, { id: 2, name: "Base", active: data.reles[1] }]}
+        />
+        <StatusCard 
+          icon={Zap} title="Nutrientes TDS" value={data.tds} unit="ppm" color="blue" hexColor="#3b82f6" label="CH-02" historyData={history.tds}
+          reles={[{ id: 3, name: "Bomba A", active: data.reles[2] }, { id: 4, name: "Bomba B", active: data.reles[3] }]}
+        />
+        <StatusCard 
+          icon={Thermometer} title="Temperatura Agua" value={data.tw.toFixed(1)} unit="°c" color="cyan" hexColor="#06b6d4" label="CH-03" historyData={history.tw}
+          reles={[{ id: 5, name: "Calor", active: data.reles[4] }, { id: 6, name: "Frío", active: data.reles[5] }]}
         />
 
-        {/* Nutrients Control */}
-        <StatusCard 
-          icon={Zap}
-          title="Conductividad / TDS"
-          value={data.tds}
-          unit="PPM"
-          color="blue"
-          hexColor="#3b82f6"
-          label="Sensor 02"
-          historyData={history.tds}
-          reles={[
-            { id: 3, name: "Bomba Nutri A", active: data.reles[2] },
-            { id: 4, name: "Bomba Nutri B", active: data.reles[3] }
-          ]}
-        />
-
-        {/* Water Temp */}
-        <StatusCard 
-          icon={Thermometer}
-          title="Temperatura Agua"
-          value={data.tw.toFixed(1)}
-          unit="°C"
-          color="cyan"
-          hexColor="#06b6d4"
-          label="Sensor 03"
-          historyData={history.tw}
-          reles={[
-            { id: 5, name: "Calentador", active: data.reles[4] },
-            { id: 6, name: "Chiller", active: data.reles[5] }
-          ]}
-        />
-
-        {/* Climate Control Section */}
-        <div className="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-8 flex flex-col justify-between group relative overflow-hidden">
-          <div className="flex justify-between items-center mb-8 relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="p-4 rounded-2xl bg-orange-500/10 text-orange-500">
-                <Wind size={28} />
-              </div>
-              <div>
-                <h2 className="text-slate-100 text-xl font-black italic tracking-tight uppercase">Clima Ambiente</h2>
-                <p className="text-[10px] text-slate-500 font-mono tracking-tighter">Dual Channel History (Temp/Hum)</p>
-              </div>
+        <div className="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-[2rem] p-6 relative overflow-hidden">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-orange-500/10 text-orange-500 rounded-xl"><Wind size={20} /></div>
+              <h2 className="font-black uppercase italic text-sm tracking-tight text-slate-100">Clima de Cultivo</h2>
             </div>
-            <div className="text-right flex flex-col items-end">
-              <span className="text-[10px] font-bold text-slate-500 uppercase mb-1">Último Sync</span>
-              <span className="px-3 py-1 rounded-full bg-slate-800 text-slate-400 text-[10px] font-mono">
-                {lastUpdate.toLocaleTimeString()}
-              </span>
-            </div>
+            <span className="text-[10px] font-mono text-slate-500 italic">Sync: {lastUpdate.toLocaleTimeString()}</span>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center relative z-10">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-black/30 p-5 rounded-3xl border border-slate-800/50">
-                <div className="flex justify-between items-start mb-2">
-                   <p className="text-[10px] font-bold text-slate-500 uppercase">Temp Aire</p>
-                   <Sparkline data={history.ta} color="#f97316" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="bg-black/40 p-4 rounded-2xl border border-slate-800 flex justify-between items-center">
+                <div>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Temp Aire</p>
+                  <p className="text-3xl font-black text-white">{data.ta.toFixed(1)}°</p>
                 </div>
-                <p className="text-5xl font-black text-white">{data.ta.toFixed(1)}°</p>
+                <Sparkline data={history.ta} color="#f97316" />
               </div>
-              <div className="bg-black/30 p-5 rounded-3xl border border-slate-800/50">
-                <div className="flex justify-between items-start mb-2">
-                   <p className="text-[10px] font-bold text-slate-500 uppercase">Humedad</p>
-                   <Sparkline data={history.ha} color="#f97316" />
+              <div className="bg-black/40 p-4 rounded-2xl border border-slate-800 flex justify-between items-center">
+                <div>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Humedad</p>
+                  <p className="text-3xl font-black text-white">{data.ha}%</p>
                 </div>
-                <p className="text-5xl font-black text-white">{data.ha}%</p>
+                <Sparkline data={history.ha} color="#f97316" />
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-               {[
-                 { id: 7, name: "Circulación", active: data.reles[6] },
-                 { id: 8, name: "Humidificador", active: data.reles[7] },
-                 { id: 9, name: "Extractor", active: data.reles[8] },
-                 { id: 10, name: "Ventilación", active: data.reles[9] }
-               ].map(r => (
-                 <div key={r.id} className={`flex items-center gap-2 p-3 rounded-2xl border transition-colors ${r.active ? 'bg-orange-500/10 border-orange-500/40 text-orange-200' : 'bg-slate-900/40 border-slate-800 text-slate-600'}`}>
-                   <Power size={14} className={r.active ? 'text-orange-500' : 'text-slate-800'} />
-                   <span className="text-[10px] font-black uppercase tracking-tighter truncate">R{r.id}: {r.name}</span>
-                 </div>
-               ))}
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { id: 7, name: "Foco", active: data.reles[6] },
+                { id: 8, name: "Humid.", active: data.reles[7] },
+                { id: 9, name: "Extrac.", active: data.reles[8] },
+                { id: 10, name: "Vent.", active: data.reles[9] }
+              ].map(r => (
+                <div key={r.id} className={`p-3 rounded-xl border text-[9px] font-black uppercase flex items-center gap-2 ${r.active ? 'border-orange-500/30 bg-orange-500/5 text-orange-400' : 'border-slate-800 bg-slate-900/50 text-slate-600'}`}>
+                  <Power size={10} /> R{r.id}: {r.name}
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Level Control */}
-        <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden flex flex-col justify-between">
-          <div className="relative z-10">
-            <div className="flex justify-between items-start mb-6">
-              <div className="p-3 bg-white/10 rounded-2xl">
-                <Waves size={24} />
-              </div>
-              <div className="bg-black/20 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase italic">Reserva</div>
+        <div className="bg-indigo-600 rounded-[2rem] p-6 text-white flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-2 bg-white/10 rounded-lg"><Waves size={20} /></div>
+              <span className="text-[9px] font-black bg-black/20 px-2 py-1 rounded-md uppercase tracking-tighter">Reservorio Principal</span>
             </div>
-            <h2 className="text-white/70 text-sm font-bold mb-1 uppercase tracking-widest">Capacidad Tanque</h2>
-            <div className="flex items-baseline gap-2">
-              <span className="text-6xl font-black tracking-tighter">{data.nv.toFixed(1)}</span>
-              <span className="text-white/50 font-bold text-xl uppercase">%</span>
+            <p className="text-white/60 text-[10px] font-bold uppercase mb-1">Nivel de Agua</p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-5xl font-black">{data.nv.toFixed(1)}</span>
+              <span className="text-xl font-bold opacity-50">%</span>
             </div>
           </div>
-
-          <div className="relative z-10 mt-10">
-            <div className="h-4 w-full bg-black/20 rounded-full overflow-hidden backdrop-blur-sm border border-white/5">
-              <div 
-                className={`h-full transition-all duration-1000 ${data.nv < 20 ? 'bg-red-400' : 'bg-white shadow-[0_0_15px_rgba(255,255,255,0.5)]'}`}
-                style={{ width: `${data.nv}%` }}
-              ></div>
+          <div className="mt-6">
+            <div className="h-3 w-full bg-black/20 rounded-full overflow-hidden border border-white/5">
+              <div className="h-full bg-white transition-all duration-1000" style={{ width: `${data.nv}%` }}></div>
             </div>
-            <div className="flex justify-between mt-4">
-                <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${data.nv < 20 ? 'text-red-200 animate-bounce' : 'text-indigo-200'}`}>
-                    {data.nv < 20 ? '⚠️ CRITICAL REFILL REQUIRED' : 'SYSTEM NOMINAL'}
-                </p>
-                <span className="text-[10px] font-mono text-white/40">S04_USS</span>
-            </div>
+            <p className="text-[9px] font-mono mt-3 opacity-50 uppercase tracking-widest text-center">Sensor Ultrasound Active</p>
           </div>
-
-          {/* Abstract background effect */}
-          <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-indigo-400/20 rounded-full blur-3xl animate-pulse"></div>
         </div>
-
       </main>
 
-      <footer className="max-w-7xl mx-auto mt-16 flex flex-col md:flex-row justify-between items-center border-t border-slate-800/50 pt-8 text-slate-600 gap-4">
-        <div className="flex items-center gap-2">
-          <Settings size={14} className="animate-spin-slow" />
-          <p className="text-[10px] font-mono uppercase tracking-[0.2em]">Hardware Interface V3.9.1 | Sparkline Engine Enabled</p>
+      <footer className="max-w-7xl mx-auto mt-12 pt-6 border-t border-slate-900 flex justify-between items-center text-slate-600">
+        <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest">
+          <Settings size={12} className="animate-spin-slow" />
+          Hardware Connection Stable
         </div>
-        <div className="flex gap-6">
-            <p className="text-[10px] font-mono uppercase tracking-[0.2em]">Packet Loss: 0%</p>
-            <p className="text-[10px] font-mono uppercase tracking-[0.2em]">Buffer: OK</p>
-        </div>
+        <div className="text-[9px] font-mono opacity-50 uppercase tracking-[0.2em]">© 2024 HidroPro Systems Lab</div>
       </footer>
-
-      <style>{`
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .animate-spin-slow {
-          animation: spin-slow 8s linear infinite;
-        }
-      `}</style>
+      <style>{` .animate-spin-slow { animation: spin 8s linear infinite; } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } `}</style>
     </div>
   );
 };
