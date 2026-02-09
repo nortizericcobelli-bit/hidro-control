@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 
 const App = () => {
+  // Nagtalinaed dagiti husto a variable names (ph, tds, etc.) para iti logic
   const [data, setData] = useState({
     ph: 6.2,
     tw: 22.8,
@@ -35,6 +36,7 @@ const App = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       setData(prev => {
+        // Usar Number (saan a Numero)
         const newPh = Number((6.1 + Math.random() * 0.2).toFixed(2));
         const newTds = Math.floor(570 + Math.random() * 20);
         const newTw = Number((22.5 + Math.random() * 0.6).toFixed(1));
@@ -49,6 +51,7 @@ const App = () => {
           ha: [...h.ha.slice(1), newHa],
         }));
 
+        // Conditionals para kadagiti relays (reles)
         const newReles = [
           newPh > 6.5 ? 1 : 0, 
           newPh < 5.5 ? 1 : 0, 
@@ -77,8 +80,8 @@ const App = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Componente de Micro Gráfica SVG corregido
   const Sparkline = ({ data, color }) => {
+    if (!data) return null;
     const min = Math.min(...data);
     const max = Math.max(...data);
     const range = max - min || 1;
@@ -138,20 +141,20 @@ const App = () => {
           <h1 className="text-2xl font-black text-white italic tracking-tighter">
             HIDRO<span className="text-emerald-500">PRO</span> V3.9
           </h1>
-          <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-slate-500">Industrial Monitoring Dashboard</p>
+          <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-slate-500">INDUSTRIAL MONITORING - ILOKANO</p>
         </div>
         <div className="flex items-center gap-4 mt-4 md:mt-0">
           <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full">
             <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="text-[10px] font-mono text-emerald-500 uppercase tracking-widest">Live</span>
+            <span className="text-[10px] font-mono text-emerald-500 uppercase tracking-widest">Agtultuloy</span>
           </div>
-          <span className="text-[10px] font-mono text-slate-600">{lastUpdate.toLocaleTimeString()}</span>
+          <span className="text-[10px] font-mono text-slate-600 italic">Naudi a panagpabaro: {lastUpdate.toLocaleTimeString()}</span>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card 
-          icon={Droplet} title="Nivel pH" value={data.ph.toFixed(2)} unit="pH" color="emerald" label="SNS-01" 
+          icon={Droplet} title="Nibel ti pH" value={data.ph.toFixed(2)} unit="pH" color="emerald" label="SNS-01" 
           historyData={history.ph} relesInfo={[{name: "R1 Ácido", active: data.reles[0]}, {name: "R2 Base", active: data.reles[1]}]}
         />
         <Card 
@@ -159,26 +162,26 @@ const App = () => {
           historyData={history.tds} relesInfo={[{name: "R3 Bomba A", active: data.reles[2]}, {name: "R4 Bomba B", active: data.reles[3]}]}
         />
         <Card 
-          icon={Thermometer} title="Temp. Agua" value={data.tw.toFixed(1)} unit="°c" color="cyan" label="SNS-03" 
-          historyData={history.tw} relesInfo={[{name: "R5 Calent.", active: data.reles[4]}, {name: "R6 Enfriad.", active: data.reles[5]}]}
+          icon={Thermometer} title="Temp. ti Danum" value={data.tw.toFixed(1)} unit="°c" color="cyan" label="SNS-03" 
+          historyData={history.tw} relesInfo={[{name: "R5 Pagpapudot", active: data.reles[4]}, {name: "R6 Pagpalamiis", active: data.reles[5]}]}
         />
 
         <div className="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-8 flex flex-col md:flex-row gap-8">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-6">
               <Wind className="text-orange-500" size={20} />
-              <h2 className="text-sm font-black uppercase text-white tracking-widest italic">Atmósfera</h2>
+              <h2 className="text-sm font-black uppercase text-white tracking-widest italic">Kasasaad ti Angin</h2>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-black/30 p-4 rounded-2xl border border-slate-800">
-                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Temp Aire</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Temp ti Angin</p>
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-black text-white">{data.ta.toFixed(1)}°</span>
                   <Sparkline data={history.ta} color="#f97316" />
                 </div>
               </div>
               <div className="bg-black/30 p-4 rounded-2xl border border-slate-800">
-                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Humedad</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Humidity</p>
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-black text-white">{data.ha}%</span>
                   <Sparkline data={history.ha} color="#f97316" />
@@ -188,7 +191,7 @@ const App = () => {
           </div>
           <div className="grid grid-cols-2 gap-2 flex-1">
             {[
-              {id: 7, name: "Foco", active: data.reles[6]},
+              {id: 7, name: "Silaw", active: data.reles[6]},
               {id: 8, name: "Humid.", active: data.reles[7]},
               {id: 9, name: "Extrac.", active: data.reles[8]},
               {id: 10, name: "Ventil.", active: data.reles[9]}
@@ -205,7 +208,7 @@ const App = () => {
           <div className="relative z-10 flex flex-col h-full justify-between">
             <div>
               <Waves className="mb-4 opacity-50" size={24} />
-              <p className="text-indigo-200 text-[10px] font-bold uppercase tracking-widest mb-1">Nivel Tanque</p>
+              <p className="text-indigo-200 text-[10px] font-bold uppercase tracking-widest mb-1">Nibel ti Tanque</p>
               <h3 className="text-5xl font-black">{data.nv.toFixed(1)}%</h3>
             </div>
             <div className="mt-8">
@@ -221,7 +224,7 @@ const App = () => {
       
       <footer className="max-w-6xl mx-auto mt-16 flex justify-between items-center opacity-30 text-[9px] font-mono uppercase tracking-[0.5em]">
         <span>Hardware V4.1 OK</span>
-        <span>© 2024 HP Labs</span>
+        <span>© 2024 HP Labs - Industrial Monitoring</span>
       </footer>
     </div>
   );
