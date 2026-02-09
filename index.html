@@ -1,282 +1,293 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HIDROPRO V4.0 - Control Total</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono&display=swap');
+import React, { useState, useEffect } from 'react';
+import { 
+  Settings, Activity, Zap, Timer, TrendingUp, 
+  History, Droplet, Thermometer, Waves, Beaker,
+  Sun, Wind, ArrowLeft, Info, RefreshCw, 
+  ArrowDownCircle, ArrowUpCircle, Container
+} from 'lucide-react';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, 
+  Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area
+} from 'recharts';
+
+const App = () => {
+  const [activePanel, setActivePanel] = useState('overview');
+  const [history, setHistory] = useState([]);
+  const [solutionLevel, setSolutionLevel] = useState(85); // % de nivel (Flotante)
+  const [isEmptying, setIsEmptying] = useState(false);
+  const [isFilling, setIsFilling] = useState(false);
+
+  // --- ESTADO DE SENSORES ---
+  const [data, setData] = useState({
+    ph: { val: 6.2, target: 6.0, unit: 'pH', status: 'OK', color: '#3b82f6' },
+    ec: { val: 1850, target: 1800, unit: 'PPM', status: 'OK', color: '#10b981' },
+    waterTemp: { val: 22.4, target: 22.0, unit: '°C', status: 'OK', color: '#06b6d4' },
+    airTemp: { val: 26.8, target: 25.0, unit: '°C', status: 'WARN', color: '#f59e0b' },
+    humidity: { val: 55, target: 60, unit: '%', status: 'OK', color: '#8b5cf6' },
+    light: { val: 85, target: 100, unit: '%', status: 'ON', color: '#facc15' }
+  });
+
+  // --- CUENTA REGRESIVA 15 DÍAS ---
+  const [timeLeft, setTimeLeft] = useState(15 * 24 * 60 * 60); 
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => (prev > 0 ? prev - 1 : 15 * 24 * 60 * 60));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTime = (seconds) => {
+    const d = Math.floor(seconds / (3600 * 24));
+    const h = Math.floor((seconds % (3600 * 24)) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${d}d ${h}h ${m}m ${s}s`;
+  };
+
+  // Simulación de datos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setHistory(prev => {
+        const newData = [...prev, { 
+          time, 
+          ph: data.ph.val + (Math.random() * 0.1 - 0.05), 
+          hum: data.humidity.val + (Math.random() * 2 - 1)
+        }];
+        return newData.slice(-20);
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [data]);
+
+  const MiniCard = ({ id, title, icon: Icon, sensor }) => (
+    <button 
+      onClick={() => setActivePanel(id)}
+      className="bg-slate-900/40 border border-white/5 p-6 rounded-[2.5rem] hover:bg-white/5 transition-all group relative overflow-hidden text-left"
+    >
+      <div className="flex justify-between items-start mb-4">
+        <div className="p-3 bg-white/5 rounded-2xl group-hover:scale-110 transition-transform" style={{ color: sensor.color }}>
+          <Icon size={20} />
+        </div>
+        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border ${sensor.status === 'OK' ? 'border-emerald-500/20 text-emerald-500' : 'border-amber-500/20 text-amber-500'}`}>
+          {sensor.status}
+        </span>
+      </div>
+      <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{title}</h3>
+      <div className="flex items-baseline gap-1 mt-1">
+        <span className="text-3xl font-black italic text-white">{sensor.val}</span>
+        <span className="text-[10px] font-bold text-slate-600">{sensor.unit}</span>
+      </div>
+    </button>
+  );
+
+  const DetailedView = ({ id, title, icon: Icon, sensor, dataKey, color }) => (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-center gap-4 mb-8">
+        <button onClick={() => setActivePanel('overview')} className="p-4 bg-white/5 rounded-3xl hover:bg-white/10 transition-colors">
+          <ArrowLeft size={20} />
+        </button>
+        <div>
+          <h2 className="text-3xl font-black italic tracking-tighter uppercase">{title}</h2>
+          <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">Análisis Detallado de Parámetro</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-4 bg-gradient-to-br from-slate-900/60 to-black border border-white/5 rounded-[3.5rem] p-10 relative overflow-hidden text-center lg:text-left">
+          <div className="absolute -top-10 -right-10 opacity-5" style={{ color }}><Icon size={280} /></div>
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-8">Valor Actual</span>
+          <div className="flex items-baseline justify-center lg:justify-start gap-3 mb-12">
+            <span className="text-9xl font-black italic tracking-tighter text-white">{sensor.val}</span>
+            <span className="text-xl font-bold text-slate-600 uppercase">{sensor.unit}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white/5 p-4 rounded-3xl">
+              <span className="text-[8px] font-black text-slate-500 uppercase block">Objetivo</span>
+              <span className="text-xl font-mono font-bold text-white">{sensor.target}</span>
+            </div>
+            <div className="bg-white/5 p-4 rounded-3xl">
+              <span className="text-[8px] font-black text-slate-500 uppercase block">Desvío</span>
+              <span className={`text-xl font-mono font-bold text-emerald-500`}>0.12</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-8 bg-slate-900/30 border border-white/5 rounded-[3.5rem] p-10 flex flex-col justify-center">
+          <div className="flex justify-between items-center mb-8">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+              <TrendingUp size={14} /> Historial 24h
+            </span>
+          </div>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={history}>
+                <defs>
+                  <linearGradient id="colorVar" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor={color} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+                <XAxis dataKey="time" hide />
+                <YAxis hide />
+                <Tooltip contentStyle={{ backgroundColor: '#000', border: 'none', borderRadius: '15px' }} />
+                <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={4} fill="url(#colorVar)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#020202] text-slate-200 p-6 md:p-10 font-sans">
+      <div className="max-w-7xl mx-auto">
         
-        body { 
-            background-color: #020617; 
-            color: #f1f5f9; 
-            font-family: 'Inter', sans-serif;
-            background-image: radial-gradient(circle at 50% -20%, #1e1b4b 0%, #020617 80%);
-            min-height: 100vh;
-        }
-        .glass-card { 
-            background: rgba(15, 23, 42, 0.6); 
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05); 
-            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
-            transition: all 0.3s ease;
-        }
-        .glass-card:hover {
-            border-color: rgba(255, 255, 255, 0.1);
-            transform: translateY(-2px);
-        }
-        .mono { font-family: 'JetBrains Mono', monospace; }
-        .relay-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-        @media (max-width: 640px) { .relay-grid { grid-template-columns: repeat(2, 1fr); } }
-        
-        /* Animaciones para el modal */
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .animate-fade { animation: fadeIn 0.2s ease-out; }
-        .animate-slide { animation: slideUp 0.3s ease-out; }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
+        {/* HEADER */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-600 p-2.5 rounded-2xl">
+                <Waves size={24} className="text-white" />
+              </div>
+              <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase">HidroMaster v2</h1>
+            </div>
+            <p className="text-[9px] text-slate-500 font-mono mt-2 tracking-[0.4em] uppercase">Control Industrial de Nutrientes</p>
+          </div>
+          
+          <div className="flex gap-3 bg-slate-900/50 p-2 rounded-[2rem] border border-white/5">
+            <div className="px-6 py-3 text-right">
+              <span className="text-[8px] font-black text-slate-600 uppercase block">Nivel Depósito</span>
+              <span className="text-xs font-bold text-blue-400 flex items-center justify-end gap-2">
+                <Container size={12} /> {solutionLevel}% (Flotante OK)
+              </span>
+            </div>
+            <button className="p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
+              <Settings size={20} className="text-slate-400" />
+            </button>
+          </div>
+        </header>
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+        {activePanel === 'overview' ? (
+          <div className="space-y-10">
+            {/* GRID SENSORES */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
+              <MiniCard id="ph" title="pH Agua" icon={Beaker} sensor={data.ph} />
+              <MiniCard id="ec" title="EC/PPM" icon={Zap} sensor={data.ec} />
+              <MiniCard id="temp" title="Temp. Agua" icon={Thermometer} sensor={data.waterTemp} />
+              <MiniCard id="air" title="Temp. Aire" icon={Wind} sensor={data.airTemp} />
+              <MiniCard id="humidity" title="Humedad" icon={Droplet} sensor={data.humidity} />
+              <MiniCard id="light" title="Intens. Luz" icon={Sun} sensor={data.light} />
+            </div>
 
-        const Icon = ({ name, size = 20, className = "" }) => {
-            useEffect(() => {
-                if (window.lucide) window.lucide.createIcons();
-            }, [name]);
-            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
-        };
-
-        const Sparkline = ({ data, color, width = 120 }) => {
-            if (!data || data.length < 2) return null;
-            const min = Math.min(...data);
-            const max = Math.max(...data);
-            const range = (max - min) || 1;
-            const height = 40;
-            const points = data.map((val, i) => {
-                const x = (i / (data.length - 1)) * width;
-                const y = height - ((val - min) / range) * height;
-                return `${x},${y}`;
-            }).join(' ');
-
-            return (
-                <svg width={width} height={height} className="overflow-visible">
-                    <path d={`M ${points}`} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-            );
-        };
-
-        const ControlModal = ({ isOpen, onClose, title }) => {
-            if (!isOpen) return null;
-            return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade text-slate-200">
-                    <div className="glass-card w-full max-w-md p-8 rounded-[2.5rem] border-white/10 animate-slide">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold italic tracking-tight">Programar {title}</h2>
-                            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                                <Icon name="x" size={20} />
-                            </button>
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-[10px] uppercase font-bold text-slate-500 block mb-2">Punto de consigna (Set Point)</label>
-                                <input type="number" className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Valor objetivo..." />
-                            </div>
-                            <div>
-                                <label className="text-[10px] uppercase font-bold text-slate-500 block mb-2">Histéresis (Margen)</label>
-                                <input type="number" className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="0.5" />
-                            </div>
-                            <div className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl">
-                                <input type="checkbox" className="w-5 h-5 accent-indigo-500" defaultChecked />
-                                <span className="text-sm">Habilitar Control Automático</span>
-                            </div>
-                        </div>
-                        <button onClick={onClose} className="w-full mt-8 bg-indigo-600 hover:bg-indigo-500 py-4 rounded-2xl font-bold transition-all">Guardar Configuración</button>
+            {/* CONTROL DE CAMBIO DE SOLUCIÓN */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* BLOQUE IZQUIERDO: TIMER Y NIVEL */}
+              <div className="lg:col-span-7 bg-slate-900/20 border border-white/5 rounded-[4rem] p-12 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-8 flex items-center gap-2">
+                    <RefreshCw size={14} /> Mantenimiento del Sistema
+                  </h3>
+                  <div className="flex flex-col md:flex-row items-center gap-12">
+                    <div className="relative flex items-center justify-center">
+                       {/* Círculo de progreso visual para el nivel del flotante */}
+                      <svg className="w-32 h-32 transform -rotate-90">
+                        <circle cx="64" cy="64" r="60" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/5" />
+                        <circle cx="64" cy="64" r="60" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={376.8} strokeDashoffset={376.8 - (376.8 * solutionLevel) / 100} className="text-blue-500" strokeLinecap="round" />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-2xl font-black text-white">{solutionLevel}%</span>
+                        <span className="text-[8px] font-bold text-slate-500 uppercase">Nivel</span>
+                      </div>
                     </div>
+                    <div className="text-center md:text-left">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Próximo cambio de solución</p>
+                      <h2 className="text-5xl font-black italic text-white tracking-tighter">
+                        {formatTime(timeLeft)}
+                      </h2>
+                    </div>
+                  </div>
                 </div>
-            );
-        };
 
-        const App = () => {
-            const [data, setData] = useState({
-                ph: 6.2, tw: 22.8, tds: 580, ta: 24.5, ha: 62, nv: 88,
-                reles: Array(10).fill(0)
-            });
-            const [history, setHistory] = useState({
-                ph: Array(20).fill(6.2), tds: Array(20).fill(580),
-                tw: Array(20).fill(22.8), ta: Array(20).fill(24.5), ha: Array(20).fill(62)
-            });
-            const [modal, setModal] = useState({ open: false, title: "" });
-
-            useEffect(() => {
-                const interval = setInterval(() => {
-                    setData(prev => {
-                        const nPh = Number((6.1 + Math.random() * 0.2).toFixed(2));
-                        const nTds = Math.floor(570 + Math.random() * 20);
-                        const nTw = Number((22.4 + Math.random() * 0.6).toFixed(1));
-                        const nTa = Number((23.8 + Math.random() * 1.2).toFixed(1));
-                        const nHa = Math.floor(58 + Math.random() * 6);
-                        
-                        setHistory(h => ({
-                            ph: [...h.ph.slice(1), nPh],
-                            tds: [...h.tds.slice(1), nTds],
-                            tw: [...h.tw.slice(1), nTw],
-                            ta: [...h.ta.slice(1), nTa],
-                            ha: [...h.ha.slice(1), nHa],
-                        }));
-
-                        return {
-                            ...prev, ph: nPh, tds: nTds, tw: nTw, ta: nTa, ha: nHa,
-                            nv: Math.max(0, prev.nv - 0.005),
-                            reles: [nPh>6.5?1:0, nPh<5.8?1:0, nTds<500?1:0, nTds<500?1:0, nTw>25?1:0, nTw<18?1:0, 1, nHa<50?1:0, nTa>28?1:0, 0]
-                        };
-                    });
-                }, 4000);
-                return () => clearInterval(interval);
-            }, []);
-
-            const openSettings = (title) => setModal({ open: true, title });
-
-            const CardHeader = ({ icon, color, label, title }) => (
-                <div className="flex justify-between items-start mb-6">
-                    <div className="flex gap-4 items-center">
-                        <div className={`p-3 rounded-2xl bg-${color}-500/10 text-${color}-500`}>
-                            <Icon name={icon} />
-                        </div>
-                        <div>
-                            <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-widest">{label}</h3>
-                            <p className="text-white font-bold">{title}</p>
-                        </div>
-                    </div>
+                <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-6 bg-white/5 rounded-[2.5rem] border border-white/5">
+                    <span className="text-[10px] font-black text-slate-500 uppercase block mb-4">Relé 01: Vaciado</span>
                     <button 
-                        onClick={() => openSettings(title)}
-                        className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-colors border border-white/5"
+                      onClick={() => setIsEmptying(!isEmptying)}
+                      className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest transition-all ${isEmptying ? 'bg-red-500 text-white shadow-lg shadow-red-900/20' : 'bg-white/5 hover:bg-white/10 text-slate-400'}`}
                     >
-                        <Icon name="settings" size={16} />
+                      <ArrowDownCircle size={16} /> {isEmptying ? 'Bomba ON' : 'Activar Vaciado'}
                     </button>
+                  </div>
+                  <div className="p-6 bg-white/5 rounded-[2.5rem] border border-white/5">
+                    <span className="text-[10px] font-black text-slate-500 uppercase block mb-4">Relé 02: Llenado</span>
+                    <button 
+                       onClick={() => setIsFilling(!isFilling)}
+                       className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest transition-all ${isFilling ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-900/20' : 'bg-white/5 hover:bg-white/10 text-slate-400'}`}
+                    >
+                      <ArrowUpCircle size={16} /> {isFilling ? 'Bomba ON' : 'Activar Llenado'}
+                    </button>
+                  </div>
                 </div>
-            );
+              </div>
 
-            const labels = ["pH-", "pH+", "NUT-A", "NUT-B", "CHILL", "HEAT", "FLOW", "HUMID", "VENT", "AUX"];
-
-            return (
-                <div className="p-4 md:p-10 max-w-7xl mx-auto pb-24">
-                    <header className="flex justify-between items-end mb-12">
-                        <div>
-                            <h1 className="text-4xl font-black italic tracking-tighter text-white">HIDRO<span className="text-emerald-500">PRO</span> <span className="text-xs not-italic text-slate-500 mono">v4.0_STABLE</span></h1>
-                            <p className="text-[10px] uppercase tracking-[0.4em] font-bold text-slate-500 mt-2">Sistema de Control Automatizado</p>
-                        </div>
-                        <div className="hidden md:block glass-card px-4 py-2 rounded-full border-white/10">
-                            <span className="text-[10px] mono text-emerald-500">ESTADO: NOMINAL // BUFFER: OK</span>
-                        </div>
-                    </header>
-
-                    {/* Fila Principal de Tableros */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        {/* pH */}
-                        <div className="glass-card p-8 rounded-[3rem]">
-                            <CardHeader icon="droplet" color="emerald" label="Sensor 01" title="Nivel de pH" />
-                            <div className="flex items-end justify-between mt-4">
-                                <h2 className="text-5xl font-black text-white italic leading-none">{data.ph}</h2>
-                                <Sparkline data={history.ph} color="#10b981" />
-                            </div>
-                        </div>
-
-                        {/* TDS */}
-                        <div className="glass-card p-8 rounded-[3rem]">
-                            <CardHeader icon="zap" color="blue" label="Sensor 02" title="Nutrientes" />
-                            <div className="flex items-end justify-between mt-4">
-                                <h2 className="text-5xl font-black text-white italic leading-none">{data.tds}<span className="text-sm not-italic opacity-30 ml-1">ppm</span></h2>
-                                <Sparkline data={history.tds} color="#3b82f6" />
-                            </div>
-                        </div>
-
-                        {/* Temperatura Agua */}
-                        <div className="glass-card p-8 rounded-[3rem]">
-                            <CardHeader icon="thermometer" color="cyan" label="Sensor 03" title="Temp. Agua" />
-                            <div className="flex items-end justify-between mt-4">
-                                <h2 className="text-5xl font-black text-white italic leading-none">{data.tw}<span className="text-sm not-italic opacity-30 ml-1">°C</span></h2>
-                                <Sparkline data={history.tw} color="#06b6d4" />
-                            </div>
-                        </div>
-
-                        {/* Ambiente (Temp + Hum) JUNTOS */}
-                        <div className="glass-card p-8 rounded-[3rem]">
-                            <CardHeader icon="cloud-sun" color="orange" label="Ambiente" title="Aire / Hum" />
-                            <div className="space-y-4 mt-2">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-2xl font-black italic text-white">{data.ta}°C</span>
-                                    <Sparkline data={history.ta} color="#f97316" width={80} />
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-2xl font-black italic text-white">{data.ha}%</span>
-                                    <Sparkline data={history.ha} color="#0ea5e9" width={80} />
-                                </div>
-                            </div>
-                        </div>
+              {/* BLOQUE DERECHO: ASISTENTE */}
+              <div className="lg:col-span-5 space-y-6">
+                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[3.5rem] p-10 text-white shadow-2xl shadow-blue-900/20 relative overflow-hidden">
+                  <div className="relative z-10">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-6">Guía de Cambio</h4>
+                    <p className="text-sm font-bold leading-relaxed italic mb-8">
+                      "Al iniciar el cambio, la bomba de vacío vaciará el circuito. Luego, abre la válvula de llenado hasta que el flotante indique 100%."
+                    </p>
+                    <div className="flex gap-4">
+                      <div className="p-3 bg-white/20 rounded-2xl">
+                        <Activity size={20} />
+                      </div>
+                      <div>
+                        <span className="text-[8px] font-black uppercase block opacity-60">Status Ciclo</span>
+                        <span className="text-xs font-bold uppercase tracking-widest">Estable</span>
+                      </div>
                     </div>
-
-                    {/* Tanque y Nivel */}
-                    <div className="glass-card p-8 rounded-[3rem] mb-8 flex flex-col md:flex-row gap-8 items-center">
-                        <div className="w-full md:w-1/3">
-                             <CardHeader icon="waves" color="indigo" label="Depósito" title="Nivel de Tanque" />
-                             <h2 className="text-4xl font-black italic">{data.nv.toFixed(1)}%</h2>
-                        </div>
-                        <div className="w-full flex-1">
-                            <div className="h-12 bg-white/5 rounded-2xl p-2 relative overflow-hidden border border-white/5">
-                                <div 
-                                    className="h-full bg-gradient-to-r from-blue-600 to-indigo-400 rounded-xl transition-all duration-1000 shadow-[0_0_15px_rgba(79,70,229,0.4)]" 
-                                    style={{width: `${data.nv}%`}}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Actuadores / Relés */}
-                    <div className="glass-card p-8 rounded-[3rem]">
-                        <div className="flex justify-between items-center mb-8 px-2">
-                            <div className="flex items-center gap-3">
-                                <Icon name="cpu" className="text-slate-500" />
-                                <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Panel de Control de Potencia (Relés)</h3>
-                            </div>
-                            <button onClick={() => openSettings("Relés")} className="p-2 hover:bg-white/5 rounded-xl border border-white/5 text-slate-500"><Icon name="settings" size={16} /></button>
-                        </div>
-                        <div className="relay-grid">
-                            {data.reles.map((estado, idx) => (
-                                <div key={idx} className={`p-4 rounded-2xl border transition-all duration-500 ${estado ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[inset_0_0_12px_rgba(16,185,129,0.05)]' : 'bg-slate-800/20 border-white/5'}`}>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <div className={`h-1.5 w-1.5 rounded-full ${estado ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]' : 'bg-slate-700'}`}></div>
-                                        <span className="text-[8px] mono opacity-30">{idx+1}</span>
-                                    </div>
-                                    <p className={`text-[10px] font-black mb-1 truncate ${estado ? 'text-emerald-400' : 'text-slate-600'}`}>{labels[idx]}</p>
-                                    <p className="text-[9px] font-bold opacity-40 italic">{estado ? 'ON' : 'OFF'}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <ControlModal 
-                        isOpen={modal.open} 
-                        onClose={() => setModal({ open: false, title: "" })} 
-                        title={modal.title} 
-                    />
-
-                    <footer className="mt-16 text-center border-t border-white/5 pt-10">
-                        <p className="text-[9px] mono uppercase tracking-[0.8em] text-slate-700">Control de Sistema Hidropónico de Alta Precisión // 2024-2025</p>
-                    </footer>
+                  </div>
+                  <div className="absolute -right-10 -bottom-10 opacity-20 transform rotate-12 text-white">
+                    <RefreshCw size={240} />
+                  </div>
                 </div>
-            );
-        };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+                <div className="bg-slate-900/40 border border-white/5 rounded-[3.5rem] p-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Info size={16} className="text-blue-500" />
+                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Nota Técnica</span>
+                  </div>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    El sistema detectará automáticamente cuando el nivel máximo sea alcanzado mediante el flotante para detener la bomba de llenado (Seguridad Relé 2).
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {activePanel === 'ph' && <DetailedView id="ph" title="Potencial de Hidrógeno" icon={Beaker} sensor={data.ph} dataKey="ph" color="#3b82f6" />}
+            {activePanel === 'ec' && <DetailedView id="ec" title="Conductividad (EC/PPM)" icon={Zap} sensor={data.ec} dataKey="ec" color="#10b981" />}
+            {activePanel === 'temp' && <DetailedView id="temp" title="Temperatura del Agua" icon={Thermometer} sensor={data.waterTemp} dataKey="wTemp" color="#06b6d4" />}
+            {activePanel === 'air' && <DetailedView id="air" title="Temperatura del Aire" icon={Wind} sensor={data.airTemp} dataKey="aTemp" color="#f59e0b" />}
+            {activePanel === 'humidity' && <DetailedView id="humidity" title="Humedad Relativa" icon={Droplet} sensor={data.humidity} dataKey="hum" color="#8b5cf6" />}
+            {activePanel === 'light' && <DetailedView id="light" title="Intensidad Lumínica" icon={Sun} sensor={data.light} dataKey="light" color="#facc15" />}
+          </div>
+        )}
+
+      </div>
+      
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; cursor: crosshair; }
+      `}</style>
+    </div>
+  );
+};
+
+export default App;
