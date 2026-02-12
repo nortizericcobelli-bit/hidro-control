@@ -3,95 +3,232 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Proyecto Profesional</title>
-    
-    <!-- 1. Tailwind CSS (Framework de diseño por clases) -->
+    <title>HydroSmart PRO - BLE Control</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- 2. Google Fonts (Tipografía profesional 'Inter') -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- 3. Animate.css (Para animaciones rápidas) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-
-    <!-- 4. Lucide Icons (Iconos modernos por JS) -->
     <script src="https://unpkg.com/lucide@latest"></script>
-
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            scroll-behavior: smooth;
-        }
-        .glass-effect {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
+        body { font-family: 'Outfit', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .status-on { color: #22c55e; filter: drop-shadow(0 0 8px #22c55e); }
+        .status-off { color: #64748b; }
+        .led-green { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 10px #22c55e; }
+        @keyframes pulse-blue { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        .connecting { animation: pulse-blue 1s infinite; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900">
+<body class="min-h-screen pb-12">
 
-    <!-- Navegación -->
-    <nav class="fixed w-full z-50 glass-effect p-4 shadow-sm">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <h1 class="font-bold text-xl flex items-center gap-2">
-                <i data-lucide="code-2" class="text-blue-600"></i> MiApp
-            </h1>
-            <div class="space-x-6 hidden md:block">
-                <a href="#" class="hover:text-blue-600 transition">Inicio</a>
-                <a href="#" class="hover:text-blue-600 transition">Servicios</a>
-                <a href="#" class="hover:text-blue-600 transition">Contacto</a>
+    <!-- Header / Nav -->
+    <nav class="p-6 flex justify-between items-center border-b border-white/10 sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-green-500 rounded-lg"><i data-lucide="droplets" class="text-white"></i></div>
+            <div>
+                <h1 class="font-bold text-xl tracking-tight">HIDRO_PRO V2</h1>
+                <p id="connection-status" class="text-xs text-slate-400">Desconectado</p>
             </div>
-            <button class="bg-blue-600 text-white px-5 py-2 rounded-full hover:bg-blue-700 transition shadow-lg shadow-blue-200">
-                Empezar
-            </button>
         </div>
+        <button id="connectBtn" class="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-bold transition-all flex items-center gap-2 shadow-lg shadow-blue-900/20">
+            <i data-lucide="bluetooth"></i> <span>Conectar ESP32</span>
+        </button>
     </nav>
 
-    <!-- Hero Section -->
-    <main class="pt-32 pb-20 px-4">
-        <div class="max-w-4xl mx-auto text-center animate__animated animate__fadeIn">
-            <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold mb-6 inline-block">
-                Nueva Versión 2.0
-            </span>
-            <h2 class="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight">
-                Construye el futuro con <span class="text-blue-600">Librerías Modernas</span>
-            </h2>
-            <p class="text-lg text-slate-600 mb-10 max-w-2xl mx-auto">
-                Has reiniciado tu configuración. Ahora tienes acceso a herramientas de nivel profesional para crear interfaces increíbles de forma rápida.
-            </p>
+    <main class="max-w-7xl mx-auto p-6 space-y-6">
+        
+        <!-- Telemetría en Tiempo Real -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div class="glass-card p-4 rounded-3xl flex flex-col items-center justify-center text-center">
+                <i data-lucide="thermometer" class="text-orange-400 mb-2"></i>
+                <span class="text-xs font-bold text-slate-400 uppercase">Temp Agua</span>
+                <span id="val-tw" class="text-2xl font-bold">--°C</span>
+            </div>
+            <div class="glass-card p-4 rounded-3xl flex flex-col items-center justify-center text-center">
+                <i data-lucide="ph" class="text-green-400 mb-2"></i>
+                <span class="text-xs font-bold text-slate-400 uppercase">Nivel pH</span>
+                <span id="val-ph" class="text-2xl font-bold">--</span>
+            </div>
+            <div class="glass-card p-4 rounded-3xl flex flex-col items-center justify-center text-center">
+                <i data-lucide="zap" class="text-yellow-400 mb-2"></i>
+                <span class="text-xs font-bold text-slate-400 uppercase">TDS (PPM)</span>
+                <span id="val-tds" class="text-2xl font-bold">--</span>
+            </div>
+            <div class="glass-card p-4 rounded-3xl flex flex-col items-center justify-center text-center">
+                <i data-lucide="wind" class="text-blue-400 mb-2"></i>
+                <span class="text-xs font-bold text-slate-400 uppercase">Temp Aire</span>
+                <span id="val-ta" class="text-2xl font-bold">--°C</span>
+            </div>
+            <div class="glass-card p-4 rounded-3xl flex flex-col items-center justify-center text-center">
+                <i data-lucide="droplet" class="text-sky-400 mb-2"></i>
+                <span class="text-xs font-bold text-slate-400 uppercase">Humedad</span>
+                <span id="val-ha" class="text-2xl font-bold">--%</span>
+            </div>
+            <div class="glass-card p-4 rounded-3xl flex flex-col items-center justify-center text-center">
+                <i data-lucide="clock" class="text-purple-400 mb-2"></i>
+                <span class="text-xs font-bold text-slate-400 uppercase">Uptime</span>
+                <span id="val-up" class="text-sm font-bold truncate w-full">--</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-                <!-- Card 1 -->
-                <div class="p-6 bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition">
-                    <i data-lucide="layout" class="mb-4 text-blue-500"></i>
-                    <h3 class="font-bold mb-2">Diseño Adaptativo</h3>
-                    <p class="text-sm text-slate-500">Tailwind te permite crear sitios que funcionan en cualquier dispositivo fácilmente.</p>
+            <!-- Control de Actuadores -->
+            <div class="lg:col-span-2 glass-card rounded-[2.5rem] p-8">
+                <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                    <i data-lucide="cpu"></i> Control de Relés (Lógica ESP32)
+                </h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <!-- Los botones se generan dinámicamente o se mapean a los pines -->
+                    <button onclick="toggleRelay(1, 'pH Plus')" class="relay-btn p-4 rounded-2xl bg-slate-800/50 border border-white/5 hover:bg-slate-700 transition flex flex-col items-center gap-2">
+                        <i data-lucide="arrow-up-circle" class="status-off" id="icon-1"></i>
+                        <span class="text-xs font-bold uppercase">pH Plus</span>
+                    </button>
+                    <button onclick="toggleRelay(2, 'pH Minus')" class="relay-btn p-4 rounded-2xl bg-slate-800/50 border border-white/5 hover:bg-slate-700 transition flex flex-col items-center gap-2">
+                        <i data-lucide="arrow-down-circle" class="status-off" id="icon-2"></i>
+                        <span class="text-xs font-bold uppercase">pH Minus</span>
+                    </button>
+                    <button onclick="toggleRelay(3, 'Nutriente A')" class="relay-btn p-4 rounded-2xl bg-slate-800/50 border border-white/5 hover:bg-slate-700 transition flex flex-col items-center gap-2">
+                        <i data-lucide="beaker" class="status-off" id="icon-3"></i>
+                        <span class="text-xs font-bold uppercase">Nutriente A</span>
+                    </button>
+                    <button onclick="toggleRelay(5, 'Calentador')" class="relay-btn p-4 rounded-2xl bg-slate-800/50 border border-white/5 hover:bg-slate-700 transition flex flex-col items-center gap-2">
+                        <i data-lucide="flame" class="status-off" id="icon-5"></i>
+                        <span class="text-xs font-bold uppercase">Calentador</span>
+                    </button>
+                    <button onclick="toggleRelay(7, 'Foco Grow')" class="relay-btn p-4 rounded-2xl bg-slate-800/50 border border-white/5 hover:bg-slate-700 transition flex flex-col items-center gap-2">
+                        <i data-lucide="sun" class="status-off" id="icon-7"></i>
+                        <span class="text-xs font-bold uppercase">Iluminación</span>
+                    </button>
+                    <button onclick="toggleRelay(10, 'Extractor')" class="relay-btn p-4 rounded-2xl bg-slate-800/50 border border-white/5 hover:bg-slate-700 transition flex flex-col items-center gap-2">
+                        <i data-lucide="fan" class="status-off" id="icon-10"></i>
+                        <span class="text-xs font-bold uppercase">Extractor</span>
+                    </button>
                 </div>
-                <!-- Card 2 -->
-                <div class="p-6 bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition">
-                    <i data-lucide="zap" class="mb-4 text-yellow-500"></i>
-                    <h3 class="font-bold mb-2">Alta Velocidad</h3>
-                    <p class="text-sm text-slate-500">Carga rápida mediante CDNs para que tu usuario no tenga que esperar nada.</p>
-                </div>
-                <!-- Card 3 -->
-                <div class="p-6 bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition">
-                    <i data-lucide="shield-check" class="mb-4 text-green-500"></i>
-                    <h3 class="font-bold mb-2">Código Limpio</h3>
-                    <p class="text-sm text-slate-500">Estructura organizada siguiendo los estándares de la industria actual.</p>
+                <p class="mt-6 text-xs text-slate-500 italic">* Nota: El ESP32 puede sobrescribir estos estados mediante su lógica de auto-control.</p>
+            </div>
+
+            <!-- Registro de Consola -->
+            <div class="glass-card rounded-[2.5rem] p-8 flex flex-col">
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                    <i data-lucide="terminal"></i> Datos Crudos
+                </h2>
+                <div id="console" class="flex-1 bg-black/40 rounded-2xl p-4 font-mono text-[10px] text-green-500 overflow-y-auto max-h-[400px]">
+                    > Esperando conexión Bluetooth...
                 </div>
             </div>
         </div>
     </main>
 
     <script>
-        // Inicializar los iconos de Lucide
-        lucide.createIcons();
+        // UUIDs definidos en tu Sketch
+        const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+        const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
 
-        // Ejemplo de logica para el usuario
-        console.log("Configuración profesional cargada correctamente.");
+        let device, server, characteristic;
+        let relayStates = {}; // Local track
+
+        const connectBtn = document.getElementById('connectBtn');
+        const statusText = document.getElementById('connection-status');
+        const consoleDiv = document.getElementById('console');
+
+        function log(msg, color = "text-green-500") {
+            const line = document.createElement('div');
+            line.className = color;
+            line.innerHTML = `> ${msg}`;
+            consoleDiv.appendChild(line);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        connectBtn.addEventListener('click', async () => {
+            try {
+                log("Solicitando dispositivo Bluetooth...");
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'HIDRO_PRO_TOTAL' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                statusText.innerText = "Conectando...";
+                statusText.classList.add('connecting');
+
+                server = await device.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+                // Escuchar notificaciones del ESP32
+                await characteristic.startNotifications();
+                characteristic.addEventListener('characteristicvaluechanged', handleNotifications);
+
+                log("Conexión establecida con éxito.", "text-blue-400");
+                statusText.innerText = "Conectado a HIDRO_PRO_TOTAL";
+                statusText.classList.remove('connecting');
+                connectBtn.innerHTML = '<i data-lucide="check"></i> Conectado';
+                connectBtn.className = "px-6 py-2 bg-green-600 text-white rounded-full font-bold transition-all flex items-center gap-2";
+                lucide.createIcons();
+
+            } catch (error) {
+                log("Error: " + error, "text-red-500");
+                statusText.innerText = "Fallo en conexión";
+            }
+        });
+
+        function handleNotifications(event) {
+            let value = new TextDecoder().decode(event.target.value);
+            try {
+                let data = JSON.parse(value);
+                updateUI(data);
+                log(value, "text-slate-500");
+            } catch (e) {
+                log("Recibido (No-JSON): " + value, "text-amber-500");
+            }
+        }
+
+        function updateUI(data) {
+            if(data.ph) document.getElementById('val-ph').innerText = parseFloat(data.ph).toFixed(2);
+            if(data.tds) document.getElementById('val-tds').innerText = data.tds;
+            if(data.tw) document.getElementById('val-tw').innerText = parseFloat(data.tw).toFixed(1) + "°";
+            if(data.ta) document.getElementById('val-ta').innerText = parseFloat(data.ta).toFixed(1) + "°";
+            if(data.ha) document.getElementById('val-ha').innerText = parseFloat(data.ha).toFixed(0) + "%";
+            if(data.up) document.getElementById('val-up').innerText = data.up;
+            
+            // Si el ESP envía estados de relés, podrías actualizar los iconos aquí
+        }
+
+        async function toggleRelay(pin, label) {
+            if (!characteristic) {
+                alert("Primero conecta el Bluetooth");
+                return;
+            }
+
+            // Invertimos el estado local
+            relayStates[pin] = !relayStates[pin];
+            
+            // Construimos el JSON idéntico al que espera tu MyCallbacks en ESP32
+            // {"p": 1, "s": true} -> Pin 1, State true (Activo)
+            const command = JSON.stringify({
+                p: pin,
+                s: relayStates[pin]
+            });
+
+            try {
+                const encoder = new TextEncoder();
+                await characteristic.writeValue(encoder.encode(command));
+                
+                // UI Feedback
+                const icon = document.getElementById(`icon-${pin}`);
+                if (relayStates[pin]) {
+                    icon.classList.remove('status-off');
+                    icon.classList.add('status-on');
+                    log(`Comando: ${label} ENCENDIDO`, "text-green-400");
+                } else {
+                    icon.classList.remove('status-on');
+                    icon.classList.add('status-off');
+                    log(`Comando: ${label} APAGADO`, "text-slate-400");
+                }
+            } catch (error) {
+                log("Error enviando comando: " + error, "text-red-500");
+            }
+        }
+
+        lucide.createIcons();
     </script>
 </body>
 </html>
