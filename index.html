@@ -13,7 +13,7 @@ import {
 const App = () => {
   const [activePanel, setActivePanel] = useState('overview');
   const [history, setHistory] = useState([]);
-  const [solutionLevel, setSolutionLevel] = useState(85); // % de nivel (Simulación de Flotante)
+  const [solutionLevel, setSolutionLevel] = useState(85);
   const [isEmptying, setIsEmptying] = useState(false);
   const [isFilling, setIsFilling] = useState(false);
 
@@ -27,7 +27,6 @@ const App = () => {
     light: { val: 85, target: 100, unit: '%', status: 'ON', color: '#facc15' }
   });
 
-  // --- CUENTA REGRESIVA 15 DÍAS ---
   const [timeLeft, setTimeLeft] = useState(15 * 24 * 60 * 60);
 
   useEffect(() => {
@@ -45,7 +44,6 @@ const App = () => {
     return `${d}d ${h}h ${m}m ${s}s`;
   };
 
-  // Simulación de historial para las gráficas
   useEffect(() => {
     const interval = setInterval(() => {
       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -65,10 +63,10 @@ const App = () => {
   const MiniCard = ({ id, title, icon: Icon, sensor }) => (
     <button 
       onClick={() => setActivePanel(id)}
-      className="bg-slate-900/40 border border-white/5 p-6 rounded-[2.5rem] hover:bg-white/5 transition-all group relative overflow-hidden text-left"
+      className="bg-slate-900/40 border border-white/5 p-6 rounded-[2.5rem] hover:bg-white/5 transition-all text-left group overflow-hidden"
     >
       <div className="flex justify-between items-start mb-4">
-        <div className="p-3 bg-white/5 rounded-2xl group-hover:scale-110 transition-transform" style={{ color: sensor.color }}>
+        <div className="p-3 bg-white/5 rounded-2xl" style={{ color: sensor.color }}>
           <Icon size={20} />
         </div>
         <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border ${sensor.status === 'OK' ? 'border-emerald-500/20 text-emerald-500' : 'border-amber-500/20 text-amber-500'}`}>
@@ -84,7 +82,7 @@ const App = () => {
   );
 
   const DetailedView = ({ title, sensor, dataKey, color }) => (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="p-2">
       <div className="flex items-center gap-4 mb-8">
         <button onClick={() => setActivePanel('overview')} className="p-4 bg-white/5 rounded-3xl hover:bg-white/10 transition-colors">
           <ArrowLeft size={20} />
@@ -96,13 +94,13 @@ const App = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-4 bg-slate-900/60 border border-white/5 rounded-[3.5rem] p-10 relative overflow-hidden">
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-8 text-center lg:text-left">Valor Actual</span>
-          <div className="flex items-baseline justify-center lg:justify-start gap-3 mb-12">
+        <div className="lg:col-span-4 bg-slate-900/60 border border-white/5 rounded-[3.5rem] p-10">
+          <span className="text-[10px] font-black text-slate-500 uppercase block mb-8">Valor Actual</span>
+          <div className="flex items-baseline gap-3 mb-12">
             <span className="text-9xl font-black italic tracking-tighter text-white">{sensor.val}</span>
             <span className="text-xl font-bold text-slate-600 uppercase">{sensor.unit}</span>
           </div>
-          <div className="grid grid-cols-2 gap-4 text-center">
+          <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/5 p-4 rounded-3xl">
               <span className="text-[8px] font-black text-slate-500 uppercase block">Objetivo</span>
               <span className="text-xl font-mono font-bold text-white">{sensor.target}</span>
@@ -115,7 +113,7 @@ const App = () => {
         </div>
 
         <div className="lg:col-span-8 bg-slate-900/30 border border-white/5 rounded-[3.5rem] p-10">
-          <div className="h-[300px] w-full mt-4">
+          <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={history}>
                 <defs>
@@ -138,21 +136,16 @@ const App = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#020202] text-slate-200 p-6 md:p-10 font-sans">
+    <div className="min-h-screen bg-[#020202] text-slate-200 p-6 font-sans">
       <div className="max-w-7xl mx-auto">
-        
-        {/* ENCABEZADO */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
           <div>
             <div className="flex items-center gap-3">
-              <div className="bg-blue-600 p-2.5 rounded-2xl">
-                <Waves size={24} className="text-white" />
-              </div>
+              <div className="bg-blue-600 p-2.5 rounded-2xl"><Waves size={24} className="text-white" /></div>
               <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">HidroMaster v2</h1>
             </div>
             <p className="text-[9px] text-slate-500 font-mono mt-2 tracking-[0.4em] uppercase">Control industrial de nutrientes</p>
           </div>
-          
           <div className="flex gap-3 bg-slate-900/50 p-2 rounded-[2rem] border border-white/5">
             <div className="px-6 py-3 text-right">
               <span className="text-[8px] font-black text-slate-600 uppercase block mb-1">Nivel de solución</span>
@@ -168,7 +161,6 @@ const App = () => {
 
         {activePanel === 'overview' ? (
           <div className="space-y-10">
-            {/* GRID SENSORES */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
               <MiniCard id="ph" title="pH Agua" icon={Beaker} sensor={data.ph} />
               <MiniCard id="ec" title="EC/PPM" icon={Zap} sensor={data.ec} />
@@ -178,83 +170,56 @@ const App = () => {
               <MiniCard id="luz" title="Intens. Luz" icon={Sun} sensor={data.light} />
             </div>
 
-            {/* CONTROL DE CAMBIO DE SOLUCIÓN */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               <div className="lg:col-span-7 bg-slate-900/20 border border-white/5 rounded-[4rem] p-12 flex flex-col justify-between overflow-hidden relative">
                 <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
                   <RefreshCw size={280} className="animate-spin" style={{ animationDuration: '12s' }} />
                 </div>
-                
                 <div className="relative z-10">
                   <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-10 flex items-center gap-2">
                     <RefreshCw size={14} /> Mantenimiento de solución
                   </h3>
-                  
                   <div className="flex flex-col md:flex-row items-center gap-12">
                     <div className="relative flex items-center justify-center h-40 w-40">
                       <svg className="w-full h-full transform -rotate-90">
                         <circle cx="80" cy="80" r="75" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-white/5" />
                         <circle cx="80" cy="80" r="75" stroke="currentColor" strokeWidth="10" fill="transparent" 
-                          strokeDasharray={471} 
-                          strokeDashoffset={471 - (471 * solutionLevel) / 100} 
-                          className="text-blue-500" strokeLinecap="round" 
-                        />
+                          strokeDasharray={471} strokeDashoffset={471 - (471 * solutionLevel) / 100} className="text-blue-500" strokeLinecap="round" />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                         <span className="text-3xl font-black text-white">{solutionLevel}%</span>
-                        <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">de capacidad</span>
+                        <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">capacidad</span>
                       </div>
                     </div>
-                    
                     <div className="text-center md:text-left">
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">Próximo cambio de solución</p>
-                      <h2 className="text-5xl md:text-6xl font-black italic text-white tracking-tighter tabular-nums">
-                        {formatTime(timeLeft)}
-                      </h2>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">Próximo cambio</p>
+                      <h2 className="text-4xl md:text-6xl font-black italic text-white tracking-tighter tabular-nums">{formatTime(timeLeft)}</h2>
                     </div>
                   </div>
                 </div>
-
                 <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-                  <div className="p-8 bg-white/5 rounded-[3rem] border border-white/5 backdrop-blur-sm group">
-                    <span className="text-[10px] font-black text-slate-500 uppercase block mb-4 tracking-widest">Relé 01: Vaciado</span>
-                    <button 
-                      onClick={() => setIsEmptying(!isEmptying)}
-                      className={`w-full py-5 rounded-[2rem] flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest transition-all ${isEmptying ? 'bg-red-500 text-white shadow-xl shadow-red-900/40' : 'bg-white/5 hover:bg-white/10 text-slate-300'}`}
-                    >
-                      <ArrowDownCircle size={18} /> {isEmptying ? 'BOMBA VACIADO ON' : 'Activar Vaciado'}
-                    </button>
-                  </div>
-                  <div className="p-8 bg-white/5 rounded-[3rem] border border-white/5 backdrop-blur-sm group">
-                    <span className="text-[10px] font-black text-slate-500 uppercase block mb-4 tracking-widest">Relé 02: Llenado</span>
-                    <button 
-                      onClick={() => setIsFilling(!isFilling)}
-                      className={`w-full py-5 rounded-[2rem] flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest transition-all ${isFilling ? 'bg-emerald-500 text-white shadow-xl shadow-emerald-900/40' : 'bg-white/5 hover:bg-white/10 text-slate-300'}`}
-                    >
-                      <ArrowUpCircle size={18} /> {isFilling ? 'BOMBA LLENADO ON' : 'Activar Llenado'}
-                    </button>
-                  </div>
+                  <button onClick={() => setIsEmptying(!isEmptying)} className={`p-8 rounded-[3rem] flex flex-col items-center gap-4 transition-all ${isEmptying ? 'bg-red-500 text-white' : 'bg-white/5 text-slate-300'}`}>
+                    <ArrowDownCircle size={24} />
+                    <span className="font-black text-[10px] uppercase tracking-widest">{isEmptying ? 'VACIADO ON' : 'Activar Vaciado'}</span>
+                  </button>
+                  <button onClick={() => setIsFilling(!isFilling)} className={`p-8 rounded-[3rem] flex flex-col items-center gap-4 transition-all ${isFilling ? 'bg-emerald-500 text-white' : 'bg-white/5 text-slate-300'}`}>
+                    <ArrowUpCircle size={24} />
+                    <span className="font-black text-[10px] uppercase tracking-widest">{isFilling ? 'LLENADO ON' : 'Activar Llenado'}</span>
+                  </button>
                 </div>
               </div>
-
-              <div className="lg:col-span-5 flex flex-col gap-6">
-                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[4rem] p-12 text-white shadow-2xl shadow-blue-900/20 relative overflow-hidden flex-1 flex flex-col justify-center">
-                  <div className="relative z-10">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-6 flex items-center gap-2">
-                      <Info size={14} /> Guía Operativa
-                    </h4>
-                    <p className="text-lg font-bold leading-tight italic mb-8">
-                      "Al iniciar el mantenimiento, la bomba de vacío limpiará el circuito. Luego, el llenado se detendrá automáticamente al detectar el nivel máximo mediante el flotante".
-                    </p>
-                    <div className="flex gap-4 items-center bg-white/10 p-4 rounded-3xl w-fit">
-                      <div className="p-3 bg-white/20 rounded-2xl">
-                        <Activity size={20} />
-                      </div>
-                      <div>
-                        <span className="text-[8px] font-black uppercase block opacity-60">Estado de Red</span>
-                        <span className="text-xs font-bold uppercase tracking-widest">Sincronizado</span>
-                      </div>
-                    </div>
+              <div className="lg:col-span-5 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[4rem] p-12 text-white">
+                <h4 className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-6 flex items-center gap-2">
+                  <Info size={14} /> Guía Operativa
+                </h4>
+                <p className="text-lg font-bold leading-tight italic mb-8">
+                  "La bomba de vacío limpiará el circuito. El llenado se detendrá automáticamente al detectar nivel máximo".
+                </p>
+                <div className="flex gap-4 items-center bg-white/10 p-4 rounded-3xl w-fit">
+                  <Activity size={20} />
+                  <div>
+                    <span className="text-[8px] font-black uppercase block opacity-60">Red</span>
+                    <span className="text-xs font-bold uppercase tracking-widest">Sincronizado</span>
                   </div>
                 </div>
               </div>
@@ -262,20 +227,15 @@ const App = () => {
           </div>
         ) : (
           <div>
-            {activePanel === 'ph' && <DetailedView title="Nivel de pH" sensor={data.ph} dataKey="ph" color="#3b82f6" />}
+            {activePanel === 'ph' && <DetailedView title="pH Agua" sensor={data.ph} dataKey="ph" color="#3b82f6" />}
             {activePanel === 'ec' && <DetailedView title="Conductividad (EC)" sensor={data.ec} dataKey="ec" color="#10b981" />}
-            {activePanel === 'temp' && <DetailedView title="Temperatura Agua" sensor={data.waterTemp} dataKey="waterTemp" color="#06b6d4" />}
-            {activePanel === 'aire' && <DetailedView title="Temperatura Ambiente" sensor={data.airTemp} dataKey="airTemp" color="#f59e0b" />}
-            {activePanel === 'humedad' && <DetailedView title="Humedad Relativa" sensor={data.humidity} dataKey="humidity" color="#8b5cf6" />}
-            {activePanel === 'luz' && <DetailedView title="Intensidad Lumínica" sensor={data.light} dataKey="light" color="#facc15" />}
+            {activePanel === 'temp' && <DetailedView title="Temp. Agua" sensor={data.waterTemp} dataKey="ph" color="#06b6d4" />}
+            {activePanel === 'aire' && <DetailedView title="Temp. Aire" sensor={data.airTemp} dataKey="ph" color="#f59e0b" />}
+            {activePanel === 'humedad' && <DetailedView title="Humedad" sensor={data.humidity} dataKey="hum" color="#8b5cf6" />}
+            {activePanel === 'luz' && <DetailedView title="Luz" sensor={data.light} dataKey="ph" color="#facc15" />}
           </div>
         )}
       </div>
-      
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #020202; }
-      `}</style>
     </div>
   );
 };
