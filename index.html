@@ -3,11 +3,11 @@ import {
   Settings, Activity, Zap, Timer, TrendingUp, 
   History, Droplet, Thermometer, Waves, Beaker,
   Sun, Wind, ArrowLeft, Info, RefreshCw, 
-  ArrowDownCircle, ArrowUpCircle, Container
+  ArrowDownCircle, ArrowUpCircle, Container 
 } from 'lucide-react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area
+  Tooltip, ResponsiveContainer, AreaChart, Area 
 } from 'recharts';
 
 const App = () => {
@@ -28,7 +28,7 @@ const App = () => {
   });
 
   // --- CUENTA REGRESIVA 15 DÍAS ---
-  const [timeLeft, setTimeLeft] = useState(15 * 24 * 60 * 60); 
+  const [timeLeft, setTimeLeft] = useState(15 * 24 * 60 * 60);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -83,7 +83,7 @@ const App = () => {
     </button>
   );
 
-  const DetailedView = ({ title, icon: Icon, sensor, dataKey, color }) => (
+  const DetailedView = ({ title, sensor, dataKey, color }) => (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center gap-4 mb-8">
         <button onClick={() => setActivePanel('overview')} className="p-4 bg-white/5 rounded-3xl hover:bg-white/10 transition-colors">
@@ -141,7 +141,7 @@ const App = () => {
     <div className="min-h-screen bg-[#020202] text-slate-200 p-6 md:p-10 font-sans">
       <div className="max-w-7xl mx-auto">
         
-        {/* HEADER */}
+        {/* ENCABEZADO */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
           <div>
             <div className="flex items-center gap-3">
@@ -150,12 +150,12 @@ const App = () => {
               </div>
               <h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">HidroMaster v2</h1>
             </div>
-            <p className="text-[9px] text-slate-500 font-mono mt-2 tracking-[0.4em] uppercase">Control Industrial de Nutrientes</p>
+            <p className="text-[9px] text-slate-500 font-mono mt-2 tracking-[0.4em] uppercase">Control industrial de nutrientes</p>
           </div>
           
           <div className="flex gap-3 bg-slate-900/50 p-2 rounded-[2rem] border border-white/5">
             <div className="px-6 py-3 text-right">
-              <span className="text-[8px] font-black text-slate-600 uppercase block mb-1">Nivel Solución</span>
+              <span className="text-[8px] font-black text-slate-600 uppercase block mb-1">Nivel de solución</span>
               <span className="text-xs font-bold text-blue-400 flex items-center justify-end gap-2">
                 <Container size={12} /> {solutionLevel}% (Flotante)
               </span>
@@ -173,21 +173,21 @@ const App = () => {
               <MiniCard id="ph" title="pH Agua" icon={Beaker} sensor={data.ph} />
               <MiniCard id="ec" title="EC/PPM" icon={Zap} sensor={data.ec} />
               <MiniCard id="temp" title="Temp. Agua" icon={Thermometer} sensor={data.waterTemp} />
-              <MiniCard id="air" title="Temp. Aire" icon={Wind} sensor={data.airTemp} />
-              <MiniCard id="humidity" title="Humedad" icon={Droplet} sensor={data.humidity} />
-              <MiniCard id="light" title="Intens. Luz" icon={Sun} sensor={data.light} />
+              <MiniCard id="aire" title="Temp. Aire" icon={Wind} sensor={data.airTemp} />
+              <MiniCard id="humedad" title="Humedad" icon={Droplet} sensor={data.humidity} />
+              <MiniCard id="luz" title="Intens. Luz" icon={Sun} sensor={data.light} />
             </div>
 
             {/* CONTROL DE CAMBIO DE SOLUCIÓN */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               <div className="lg:col-span-7 bg-slate-900/20 border border-white/5 rounded-[4rem] p-12 flex flex-col justify-between overflow-hidden relative">
                 <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
-                  <RefreshCw size={280} className="animate-spin-slow" />
+                  <RefreshCw size={280} className="animate-spin" style={{ animationDuration: '12s' }} />
                 </div>
                 
                 <div className="relative z-10">
                   <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-10 flex items-center gap-2">
-                    <RefreshCw size={14} /> Mantenimiento de Solución
+                    <RefreshCw size={14} /> Mantenimiento de solución
                   </h3>
                   
                   <div className="flex flex-col md:flex-row items-center gap-12">
@@ -202,7 +202,7 @@ const App = () => {
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                         <span className="text-3xl font-black text-white">{solutionLevel}%</span>
-                        <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Capacidad</span>
+                        <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">de capacidad</span>
                       </div>
                     </div>
                     
@@ -237,21 +237,21 @@ const App = () => {
                 </div>
               </div>
 
-              <div className="lg:col-span-5 space-y-6">
-                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[4rem] p-12 text-white shadow-2xl shadow-blue-900/20 relative overflow-hidden h-full flex flex-col justify-center">
+              <div className="lg:col-span-5 flex flex-col gap-6">
+                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[4rem] p-12 text-white shadow-2xl shadow-blue-900/20 relative overflow-hidden flex-1 flex flex-col justify-center">
                   <div className="relative z-10">
                     <h4 className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-6 flex items-center gap-2">
                       <Info size={14} /> Guía Operativa
                     </h4>
                     <p className="text-lg font-bold leading-tight italic mb-8">
-                      "Al iniciar el mantenimiento, la bomba de vacío limpiará el circuito. Luego, el llenado se detendrá automáticamente al detectar el nivel máximo mediante el flotante."
+                      "Al iniciar el mantenimiento, la bomba de vacío limpiará el circuito. Luego, el llenado se detendrá automáticamente al detectar el nivel máximo mediante el flotante".
                     </p>
                     <div className="flex gap-4 items-center bg-white/10 p-4 rounded-3xl w-fit">
                       <div className="p-3 bg-white/20 rounded-2xl">
                         <Activity size={20} />
                       </div>
                       <div>
-                        <span className="text-[8px] font-black uppercase block opacity-60">Status de Red</span>
+                        <span className="text-[8px] font-black uppercase block opacity-60">Estado de Red</span>
                         <span className="text-xs font-bold uppercase tracking-widest">Sincronizado</span>
                       </div>
                     </div>
@@ -262,21 +262,19 @@ const App = () => {
           </div>
         ) : (
           <div>
-            {activePanel === 'ph' && <DetailedView title="Nivel de pH" icon={Beaker} sensor={data.ph} dataKey="ph" color="#3b82f6" />}
-            {activePanel === 'ec' && <DetailedView title="Conductividad (EC)" icon={Zap} sensor={data.ec} dataKey="ec" color="#10b981" />}
-            {activePanel === 'temp' && <DetailedView title="Temperatura Agua" icon={Thermometer} sensor={data.waterTemp} dataKey="wTemp" color="#06b6d4" />}
-            {activePanel === 'air' && <DetailedView title="Temperatura Ambiente" icon={Wind} sensor={data.airTemp} dataKey="aTemp" color="#f59e0b" />}
-            {activePanel === 'humidity' && <DetailedView title="Humedad Relativa" icon={Droplet} sensor={data.humidity} dataKey="hum" color="#8b5cf6" />}
-            {activePanel === 'light' && <DetailedView title="Intensidad Lumínica" icon={Sun} sensor={data.light} dataKey="light" color="#facc15" />}
+            {activePanel === 'ph' && <DetailedView title="Nivel de pH" sensor={data.ph} dataKey="ph" color="#3b82f6" />}
+            {activePanel === 'ec' && <DetailedView title="Conductividad (EC)" sensor={data.ec} dataKey="ec" color="#10b981" />}
+            {activePanel === 'temp' && <DetailedView title="Temperatura Agua" sensor={data.waterTemp} dataKey="waterTemp" color="#06b6d4" />}
+            {activePanel === 'aire' && <DetailedView title="Temperatura Ambiente" sensor={data.airTemp} dataKey="airTemp" color="#f59e0b" />}
+            {activePanel === 'humedad' && <DetailedView title="Humedad Relativa" sensor={data.humidity} dataKey="humidity" color="#8b5cf6" />}
+            {activePanel === 'luz' && <DetailedView title="Intensidad Lumínica" sensor={data.light} dataKey="light" color="#facc15" />}
           </div>
         )}
       </div>
       
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #020202; }
-        .animate-spin-slow { animation: spin 12s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        body { font-family: 'Inter', sans-serif; background: #020202; }
       `}</style>
     </div>
   );
