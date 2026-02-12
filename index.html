@@ -17,12 +17,12 @@ const App = () => {
   const [isEmptying, setIsEmptying] = useState(false);
   const [isFilling, setIsFilling] = useState(false);
 
-  // --- ESTADO DE SENSORES ---
+  // --- ESTADO DE SENSORES (Lógica en inglés, Visual en español) ---
   const [data, setData] = useState({
     ph: { val: 6.2, target: 6.0, unit: 'pH', status: 'OK', color: '#3b82f6' },
     ec: { val: 1850, target: 1800, unit: 'PPM', status: 'OK', color: '#10b981' },
     waterTemp: { val: 22.4, target: 22.0, unit: '°C', status: 'OK', color: '#06b6d4' },
-    airTemp: { val: 26.8, target: 25.0, unit: '°C', status: 'WARN', color: '#f59e0b' },
+    airTemp: { val: 26.8, target: 25.0, unit: '°C', status: 'ALERTA', color: '#f59e0b' },
     humidity: { val: 55, target: 60, unit: '%', status: 'OK', color: '#8b5cf6' },
     light: { val: 85, target: 100, unit: '%', status: 'ON', color: '#facc15' }
   });
@@ -69,7 +69,7 @@ const App = () => {
         <div className="p-3 bg-white/5 rounded-2xl" style={{ color: sensor.color }}>
           <Icon size={20} />
         </div>
-        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border ${sensor.status === 'OK' ? 'border-emerald-500/20 text-emerald-500' : 'border-amber-500/20 text-amber-500'}`}>
+        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border ${sensor.status === 'OK' || sensor.status === 'ON' ? 'border-emerald-500/20 text-emerald-500' : 'border-amber-500/20 text-amber-500'}`}>
           {sensor.status}
         </span>
       </div>
@@ -84,11 +84,11 @@ const App = () => {
   const DetailedView = ({ title, sensor, dataKey, color }) => (
     <div className="p-2">
       <div className="flex items-center gap-4 mb-8">
-        <button onClick={() => setActivePanel('overview')} className="p-4 bg-white/5 rounded-3xl hover:bg-white/10 transition-colors">
+        <button onClick={() => setActivePanel('overview')} className="p-4 bg-white/5 rounded-3xl hover:bg-white/10 transition-colors text-white">
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h2 className="text-3xl font-black italic tracking-tighter uppercase">{title}</h2>
+          <h2 className="text-3xl font-black italic tracking-tighter uppercase text-white">{title}</h2>
           <p className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">Análisis en tiempo real</p>
         </div>
       </div>
@@ -97,7 +97,7 @@ const App = () => {
         <div className="lg:col-span-4 bg-slate-900/60 border border-white/5 rounded-[3.5rem] p-10">
           <span className="text-[10px] font-black text-slate-500 uppercase block mb-8">Valor Actual</span>
           <div className="flex items-baseline gap-3 mb-12">
-            <span className="text-9xl font-black italic tracking-tighter text-white">{sensor.val}</span>
+            <span className="text-9xl font-black italic tracking-tighter text-white leading-none">{sensor.val}</span>
             <span className="text-xl font-bold text-slate-600 uppercase">{sensor.unit}</span>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -107,7 +107,7 @@ const App = () => {
             </div>
             <div className="bg-white/5 p-4 rounded-3xl">
               <span className="text-[8px] font-black text-slate-500 uppercase block">Estado</span>
-              <span className="text-xl font-mono font-bold text-emerald-500 italic">OK</span>
+              <span className="text-xl font-mono font-bold text-emerald-500 italic">ÓPTIMO</span>
             </div>
           </div>
         </div>
@@ -125,7 +125,7 @@ const App = () => {
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
                 <XAxis dataKey="time" hide />
                 <YAxis hide />
-                <Tooltip contentStyle={{ backgroundColor: '#000', border: 'none', borderRadius: '15px' }} />
+                <Tooltip contentStyle={{ backgroundColor: '#000', border: 'none', borderRadius: '15px', color: '#fff' }} />
                 <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={4} fill="url(#colorVar)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -138,6 +138,7 @@ const App = () => {
   return (
     <div className="min-h-screen bg-[#020202] text-slate-200 p-6 font-sans">
       <div className="max-w-7xl mx-auto">
+        {/* ENCABEZADO */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
           <div>
             <div className="flex items-center gap-3">
@@ -148,7 +149,7 @@ const App = () => {
           </div>
           <div className="flex gap-3 bg-slate-900/50 p-2 rounded-[2rem] border border-white/5">
             <div className="px-6 py-3 text-right">
-              <span className="text-[8px] font-black text-slate-600 uppercase block mb-1">Nivel de solución</span>
+              <span className="text-[8px] font-black text-slate-600 uppercase block mb-1 text-slate-500">Nivel de solución</span>
               <span className="text-xs font-bold text-blue-400 flex items-center justify-end gap-2">
                 <Container size={12} /> {solutionLevel}% (Flotante)
               </span>
@@ -161,19 +162,21 @@ const App = () => {
 
         {activePanel === 'overview' ? (
           <div className="space-y-10">
+            {/* SENSORES */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
               <MiniCard id="ph" title="pH Agua" icon={Beaker} sensor={data.ph} />
               <MiniCard id="ec" title="EC/PPM" icon={Zap} sensor={data.ec} />
               <MiniCard id="temp" title="Temp. Agua" icon={Thermometer} sensor={data.waterTemp} />
               <MiniCard id="aire" title="Temp. Aire" icon={Wind} sensor={data.airTemp} />
               <MiniCard id="humedad" title="Humedad" icon={Droplet} sensor={data.humidity} />
-              <MiniCard id="luz" title="Intens. Luz" icon={Sun} sensor={data.light} />
+              <MiniCard id="light" title="Intens. Luz" icon={Sun} sensor={data.light} />
             </div>
 
+            {/* MANTENIMIENTO */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               <div className="lg:col-span-7 bg-slate-900/20 border border-white/5 rounded-[4rem] p-12 flex flex-col justify-between overflow-hidden relative">
                 <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
-                  <RefreshCw size={280} className="animate-spin" style={{ animationDuration: '12s' }} />
+                  <RefreshCw size={280} className="animate-spin text-white" style={{ animationDuration: '12s' }} />
                 </div>
                 <div className="relative z-10">
                   <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-10 flex items-center gap-2">
@@ -188,7 +191,7 @@ const App = () => {
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                         <span className="text-3xl font-black text-white">{solutionLevel}%</span>
-                        <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">capacidad</span>
+                        <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-1">capacidad</span>
                       </div>
                     </div>
                     <div className="text-center md:text-left">
@@ -198,27 +201,28 @@ const App = () => {
                   </div>
                 </div>
                 <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-                  <button onClick={() => setIsEmptying(!isEmptying)} className={`p-8 rounded-[3rem] flex flex-col items-center gap-4 transition-all ${isEmptying ? 'bg-red-500 text-white' : 'bg-white/5 text-slate-300'}`}>
+                  <button onClick={() => setIsEmptying(!isEmptying)} className={`p-8 rounded-[3rem] flex flex-col items-center gap-4 transition-all ${isEmptying ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-white/5 text-slate-300'}`}>
                     <ArrowDownCircle size={24} />
-                    <span className="font-black text-[10px] uppercase tracking-widest">{isEmptying ? 'VACIADO ON' : 'Activar Vaciado'}</span>
+                    <span className="font-black text-[10px] uppercase tracking-widest">{isEmptying ? 'BOMBA VACIADO ON' : 'Activar Vaciado'}</span>
                   </button>
-                  <button onClick={() => setIsFilling(!isFilling)} className={`p-8 rounded-[3rem] flex flex-col items-center gap-4 transition-all ${isFilling ? 'bg-emerald-500 text-white' : 'bg-white/5 text-slate-300'}`}>
+                  <button onClick={() => setIsFilling(!isFilling)} className={`p-8 rounded-[3rem] flex flex-col items-center gap-4 transition-all ${isFilling ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-white/5 text-slate-300'}`}>
                     <ArrowUpCircle size={24} />
-                    <span className="font-black text-[10px] uppercase tracking-widest">{isFilling ? 'LLENADO ON' : 'Activar Llenado'}</span>
+                    <span className="font-black text-[10px] uppercase tracking-widest">{isFilling ? 'BOMBA LLENADO ON' : 'Activar Llenado'}</span>
                   </button>
                 </div>
               </div>
+              
               <div className="lg:col-span-5 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[4rem] p-12 text-white">
                 <h4 className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-6 flex items-center gap-2">
                   <Info size={14} /> Guía Operativa
                 </h4>
                 <p className="text-lg font-bold leading-tight italic mb-8">
-                  "La bomba de vacío limpiará el circuito. El llenado se detendrá automáticamente al detectar nivel máximo".
+                  "El sistema gestiona automáticamente el vaciado de residuos y la reposición de nutrientes basándose en los niveles detectados por el flotante electrónico."
                 </p>
                 <div className="flex gap-4 items-center bg-white/10 p-4 rounded-3xl w-fit">
                   <Activity size={20} />
                   <div>
-                    <span className="text-[8px] font-black uppercase block opacity-60">Red</span>
+                    <span className="text-[8px] font-black uppercase block opacity-60">Red de Control</span>
                     <span className="text-xs font-bold uppercase tracking-widest">Sincronizado</span>
                   </div>
                 </div>
@@ -232,7 +236,7 @@ const App = () => {
             {activePanel === 'temp' && <DetailedView title="Temp. Agua" sensor={data.waterTemp} dataKey="ph" color="#06b6d4" />}
             {activePanel === 'aire' && <DetailedView title="Temp. Aire" sensor={data.airTemp} dataKey="ph" color="#f59e0b" />}
             {activePanel === 'humedad' && <DetailedView title="Humedad" sensor={data.humidity} dataKey="hum" color="#8b5cf6" />}
-            {activePanel === 'luz' && <DetailedView title="Luz" sensor={data.light} dataKey="ph" color="#facc15" />}
+            {activePanel === 'light' && <DetailedView title="Luz" sensor={data.light} dataKey="ph" color="#facc15" />}
           </div>
         )}
       </div>
@@ -241,4 +245,3 @@ const App = () => {
 };
 
 export default App;
-
