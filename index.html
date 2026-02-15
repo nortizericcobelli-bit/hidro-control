@@ -1,407 +1,382 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de pH Industrial</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/index.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&family=Inter:wght@300;400;600;700&display=swap');
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, ComposedChart, ReferenceLine
+} from 'recharts';
+import { 
+  Settings, Activity, Droplets, FlaskConical, Timer, Save, X, AlertCircle, Info, CheckCircle2
+} from 'lucide-react';
+
+const App = () => {
+  // --- Estados de Configuración ---
+  const [config, setConfig] = useState({
+    phMin: 5.8,
+    phMax: 6.2,
+    waitTime: 60, // Segundos de espera para estabilización
+    prodPlusName: "pH Plus (Silicio)",
+    prodMinusName: "pH Minus (Ácido Fosfórico)",
+    flowRate: "10ml / 5s"
+  });
+
+  const [showConfig, setShowConfig] = useState(false);
+  const [activeTab, setActiveTab] = useState('ranges'); // 'ranges', 'calibration'
+  
+  // --- Estados de Datos ---
+  const [data, setData] = useState([]);
+  const [currentPh, setCurrentPh] = useState(7.0);
+  const [pumpState, setPumpState] = useState({ plus: false, minus: false });
+  const [isCalibrating, setIsCalibrating] = useState(false);
+  const [calibStep, setCalibStep] = useState(0); // 0: select, 1: timer, 2: success
+
+  // Simulador de sensor y lógica de control
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      const timestamp = now.getTime();
+      
+      setCurrentPh(prev => {
+        // Simulación de deriva natural y efecto de bombas
+        let drift = (Math.random() - 0.5) * 0.02;
+        if (pumpState.plus) drift += 0.05;
+        if (pumpState.minus) drift -= 0.05;
         
-        body { font-family: 'Inter', sans-serif; background: #020617; color: #f1f5f9; }
-        .mono { font-family: 'JetBrains Mono', monospace; }
+        const newVal = Math.max(0, Math.min(14, prev + drift));
         
-        .glass {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
+        // Lógica de Control (Histeresis simple)
+        if (newVal < config.phMin) setPumpState({ plus: true, minus: false });
+        else if (newVal > config.phMax) setPumpState({ plus: false, minus: true });
+        else setPumpState({ plus: false, minus: false });
 
-        /* Estilo de scrollbars */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-
-        .active-tab { border-bottom: 2px solid #22c55e; color: #22c55e; }
-        
-        @keyframes pulse-ring {
-            0% { transform: scale(.33); opacity: 1; }
-            80%, 100% { opacity: 0; }
-        }
-        .pump-active {
-            position: relative;
-        }
-    </style>
-</head>
-<body class="p-4 lg:p-8 min-h-screen">
-
-    <div class="max-w-7xl mx-auto space-y-6">
-        <!-- Header -->
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 glass p-6 rounded-3xl">
-            <div>
-                <h1 class="text-2xl font-bold flex items-center gap-2">
-                    <i data-lucide="activity" class="text-green-500"></i>
-                    Controlador de pH v2.1
-                </h1>
-                <p class="text-slate-400 text-sm">Monitoreo y Dosificación en Tiempo Real</p>
-            </div>
-            <div class="flex items-center gap-4">
-                <div class="text-right">
-                    <p class="text-xs text-slate-500 uppercase font-bold">Último Censado</p>
-                    <p id="timestamp" class="mono text-sm">--/--/-- --:--:--</p>
-                </div>
-                <button onclick="toggleConfig()" class="p-3 bg-white/5 hover:bg-white/10 rounded-2xl transition-all border border-white/10">
-                    <i data-lucide="settings-2"></i>
-                </button>
-            </div>
-        </div>
-
-        <!-- Dashboard -->
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <!-- Valor Actual -->
-            <div class="lg:col-span-1 glass p-8 rounded-3xl flex flex-col items-center justify-center relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent opacity-50"></div>
-                <span class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 text-center">Concentración Ión Hidrógeno</span>
-                <div id="phDisplay" class="text-7xl font-bold mono text-green-500 drop-shadow-[0_0_15px_rgba(34,197,94,0.3)]">7.00</div>
-                <div class="mt-6 flex flex-col w-full gap-2">
-                    <div class="flex justify-between text-xs px-2"><span class="text-slate-500 italic">Estado Solución:</span> <span id="solText" class="font-bold text-blue-400 font-mono uppercase">Neutro</span></div>
-                    <div class="w-full h-1.5 bg-slate-800 rounded-full mt-1 overflow-hidden">
-                        <div id="phBar" class="h-full bg-green-500 transition-all duration-500" style="width: 50%"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Gráfico Principal -->
-            <div class="lg:col-span-3 glass p-6 rounded-3xl min-h-[400px]">
-                <div class="flex justify-between items-center mb-4">
-                    <div class="flex gap-4">
-                        <div class="flex items-center gap-2 text-xs"><div class="w-3 h-3 rounded-full bg-green-500"></div> pH</div>
-                        <div class="flex items-center gap-2 text-xs"><div class="w-3 h-3 rounded-full bg-blue-500"></div> Inyección pH+</div>
-                        <div class="flex items-center gap-2 text-xs"><div class="w-3 h-3 rounded-full bg-red-500"></div> Inyección pH-</div>
-                    </div>
-                    <div class="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Frecuencia: 2Hz</div>
-                </div>
-                <div class="h-[350px]">
-                    <canvas id="mainChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Configuración Avanzada -->
-    <div id="configModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-        <div class="glass w-full max-w-4xl max-h-[90vh] rounded-3xl overflow-hidden flex flex-col">
-            <!-- Header Modal -->
-            <div class="p-6 border-b border-white/5 flex justify-between items-center">
-                <h2 class="text-xl font-bold">Ajustes del Sistema de pH</h2>
-                <button onclick="toggleConfig()" class="p-2 hover:bg-white/10 rounded-xl"><i data-lucide="x"></i></button>
-            </div>
-
-            <!-- Tabs -->
-            <div class="flex bg-white/5 p-1 mx-6 mt-4 rounded-xl">
-                <button onclick="switchTab('control')" id="tab-control" class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all active-tab">Control & Rangos</button>
-                <button onclick="switchTab('calib')" id="tab-calib" class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all">Calibración</button>
-                <button onclick="switchTab('dose')" id="tab-dose" class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all">Dosificación</button>
-            </div>
-
-            <div class="p-8 overflow-y-auto">
-                <!-- Tab Control -->
-                <div id="content-control" class="space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div class="space-y-4">
-                            <h3 class="text-sm font-bold text-green-500 uppercase tracking-wider">Setpoints de Operación</h3>
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="text-xs text-slate-400 block mb-2">pH MÍNIMO (Activa Relee 1 - pH+)</label>
-                                    <input type="number" id="set-min" step="0.1" value="5.8" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 mono outline-none focus:border-green-500">
-                                </div>
-                                <div>
-                                    <label class="text-xs text-slate-400 block mb-2">pH MÁXIMO (Activa Relee 2 - pH-)</label>
-                                    <input type="number" id="set-max" step="0.1" value="6.2" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 mono outline-none focus:border-green-500">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="space-y-4 text-sm text-slate-400 bg-white/5 p-4 rounded-2xl border border-white/5">
-                            <h4 class="font-bold text-white flex items-center gap-2"><i data-lucide="info" class="w-4 h-4"></i> Lógica de Histéresis</h4>
-                            <p>El sistema esperará a que el valor de pH cruce el setpoint antes de detener la dosificación para evitar arranques/paradas falsos.</p>
-                            <div class="mt-4">
-                                <label class="text-xs text-slate-500 block mb-2">MARGEN DE SEGURIDAD (pH)</label>
-                                <input type="number" step="0.05" value="0.1" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 mono">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab Calibración -->
-                <div id="content-calib" class="hidden space-y-6">
-                    <div id="calib-instructions" class="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl flex gap-4 items-start">
-                        <i data-lucide="help-circle" class="text-blue-500 mt-1"></i>
-                        <div class="text-sm">
-                            <p class="font-bold text-blue-400">Procedimiento de Calibración:</p>
-                            <ol class="list-decimal ml-4 mt-2 text-blue-100/70 space-y-1">
-                                <li>Enjuague la sonda con agua destilada.</li>
-                                <li>Sumerja la sonda en la solución buffer correspondiente.</li>
-                                <li>Presione el botón "CALIBRAR" y espere a que termine el temporizador de 60s.</li>
-                            </ol>
-                        </div>
-                    </div>
-
-                    <!-- Temporizador de Calibración -->
-                    <div id="calib-timer-box" class="hidden p-6 glass rounded-2xl text-center border-2 border-green-500/30 animate-pulse">
-                        <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Estabilizando Lectura Buffer <span id="calib-point-name">--</span></p>
-                        <div id="timer-display" class="text-5xl font-bold mono text-green-500">60s</div>
-                        <p class="text-[10px] text-slate-400 mt-2 italic">Por favor, no retire la sonda de la solución.</p>
-                    </div>
-
-                    <div class="grid grid-cols-3 gap-4" id="calib-buttons">
-                        <div class="p-6 glass rounded-2xl text-center space-y-4">
-                            <div class="text-2xl font-bold text-red-400">4.01</div>
-                            <p class="text-[10px] text-slate-500">Buffer Ácido</p>
-                            <button onclick="startCalibration('4.01')" class="w-full py-2 bg-red-500/20 hover:bg-red-500/40 border border-red-500/50 rounded-xl text-xs font-bold transition-all">CALIBRAR</button>
-                        </div>
-                        <div class="p-6 glass rounded-2xl text-center space-y-4">
-                            <div class="text-2xl font-bold text-green-400">6.89</div>
-                            <p class="text-[10px] text-slate-500">Buffer Neutro</p>
-                            <button onclick="startCalibration('6.89')" class="w-full py-2 bg-green-500/20 hover:bg-green-500/40 border border-green-500/50 rounded-xl text-xs font-bold transition-all">CALIBRAR</button>
-                        </div>
-                        <div class="p-6 glass rounded-2xl text-center space-y-4">
-                            <div class="text-2xl font-bold text-blue-400">9.18</div>
-                            <p class="text-[10px] text-slate-500">Buffer Alcalino</p>
-                            <button onclick="startCalibration('9.18')" class="w-full py-2 bg-blue-500/20 hover:bg-blue-500/40 border border-blue-500/50 rounded-xl text-xs font-bold transition-all">CALIBRAR</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab Dosificación -->
-                <div id="content-dose" class="hidden space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="space-y-4">
-                            <h3 class="text-sm font-bold text-slate-400 uppercase">Capacidad Peristáltica</h3>
-                            <div class="p-4 bg-white/5 rounded-2xl border border-white/5">
-                                <p class="text-xs text-slate-500 mb-2 font-mono italic">Caudal de Hardware:</p>
-                                <p class="text-xl font-bold">10ml <span class="text-sm font-normal text-slate-400">/ 5 segundos</span></p>
-                            </div>
-                            <div>
-                                <label class="text-xs text-slate-500 block mb-2 uppercase tracking-widest">Espera de Estabilización</label>
-                                <div class="flex items-center gap-3">
-                                    <input type="number" id="stab-time" value="60" class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 mono">
-                                    <span class="text-sm text-slate-500 font-bold">SEG</span>
-                                </div>
-                                <p class="text-[10px] text-slate-500 mt-2 italic">Tiempo que requiere la solución para mezclarse antes de una nueva lectura.</p>
-                            </div>
-                        </div>
-                        <div class="space-y-4">
-                            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest">Etiquetas de Insumos</h3>
-                            <div class="space-y-3">
-                                <div>
-                                    <label class="text-[10px] text-slate-500 uppercase">Producto Bomba pH+ (Relee 1)</label>
-                                    <input type="text" id="prod-plus" placeholder="Ej: Silicato / pH Up" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none">
-                                </div>
-                                <div>
-                                    <label class="text-[10px] text-slate-500 uppercase">Producto Bomba pH- (Relee 2)</label>
-                                    <input type="text" id="prod-minus" placeholder="Ej: Ácido / pH Down" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:border-red-500 outline-none">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Footer Modal -->
-            <div class="p-6 border-t border-white/5 flex justify-end gap-3 bg-white/5">
-                <button onclick="toggleConfig()" class="px-6 py-2 text-sm font-bold text-slate-400 hover:text-white transition-all">Cerrar</button>
-                <button onclick="saveSettings()" class="px-8 py-2 bg-green-600 hover:bg-green-500 rounded-xl text-sm font-bold transition-all shadow-lg shadow-green-900/40">Guardar Parámetros</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        lucide.createIcons();
-
-        // Variables de Configuración
-        let config = {
-            phMin: 5.8,
-            phMax: 6.2,
-            histeresisTime: 60,
-            prodPlus: "pH Plus",
-            prodMinus: "pH Minus"
+        // Actualizar datos del gráfico
+        const newDataPoint = {
+          time: timestamp,
+          ph: parseFloat(newVal.toFixed(2)),
+          pumpPlus: pumpState.plus ? 1 : 0,
+          pumpMinus: pumpState.minus ? 1 : 0,
+          displayTime: now.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'2-digit' }) + ' ' + now.toLocaleTimeString('es-ES', { hour12: false })
         };
 
-        // Estado
-        let currentPh = 7.00;
-        let pumpPlusState = false;
-        let pumpMinusState = false;
-        let isCalibrating = false;
+        setData(prevData => [...prevData.slice(-49), newDataPoint]);
+        return newVal;
+      });
+    }, 2000);
 
-        // --- CHART JS FIX ---
-        const ctx = document.getElementById('mainChart').getContext('2d');
-        const mainChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                datasets: [
-                    {
-                        label: 'pH',
-                        data: [],
-                        borderColor: '#22c55e',
-                        borderWidth: 2.5,
-                        pointRadius: 0,
-                        tension: 0.1,
-                        fill: false,
-                        yAxisID: 'y'
-                    },
-                    {
-                        label: 'pH+',
-                        data: [],
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.25)',
-                        borderWidth: 0,
-                        pointRadius: 0,
-                        fill: 'origin',
-                        stepped: true,
-                        yAxisID: 'y1'
-                    },
-                    {
-                        label: 'pH-',
-                        data: [],
-                        borderColor: '#ef4444',
-                        backgroundColor: 'rgba(239, 68, 68, 0.25)',
-                        borderWidth: 0,
-                        pointRadius: 0,
-                        fill: 'origin',
-                        stepped: true,
-                        yAxisID: 'y1'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: { 
-                            unit: 'second', 
-                            displayFormats: { second: 'dd/MM HH:mm:ss' } // FIX: dd en minúscula
-                        },
-                        grid: { display: false },
-                        ticks: { color: '#64748b', font: { size: 9 } }
-                    },
-                    y: {
-                        min: 3, max: 11,
-                        ticks: { color: '#22c55e', stepSize: 1 },
-                        grid: { color: 'rgba(255,255,255,0.03)' }
-                    },
-                    y1: {
-                        min: 0, max: 2,
-                        display: false
-                    }
-                },
-                plugins: { legend: { display: false } }
-            }
-        });
+    return () => clearInterval(interval);
+  }, [pumpState, config]);
 
-        // --- LÓGICA DE BUCLE ---
-        function updateLoop() {
-            const now = new Date();
-            
-            // Simulación
-            let drift = (Math.random() - 0.5) * 0.04;
-            if (pumpPlusState) drift += 0.07;
-            if (pumpMinusState) drift -= 0.07;
-            currentPh = Math.max(0, Math.min(14, currentPh + drift));
+  // Manejo de Calibración
+  const startCalibration = (buffer) => {
+    setIsCalibrating(true);
+    setCalibStep(1);
+    let timeLeft = 30; // Tiempo de estabilización simulado
+    const timer = setInterval(() => {
+      timeLeft--;
+      if (timeLeft <= 0) {
+        clearInterval(timer);
+        setCalibStep(2);
+      }
+    }, 1000);
+  };
 
-            // UI
-            document.getElementById('phDisplay').innerText = currentPh.toFixed(2);
-            document.getElementById('timestamp').innerText = now.toLocaleString('es-AR', {
-                day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
-            });
-            
-            const bar = document.getElementById('phBar');
-            const solText = document.getElementById('solText');
-            bar.style.width = (currentPh / 14 * 100) + '%';
-            
-            if(currentPh < 6.5) {
-                solText.innerText = "Ácido"; solText.classList.replace('text-blue-400', 'text-red-400');
-                bar.style.backgroundColor = '#ef4444';
-            } else if(currentPh > 7.5) {
-                solText.innerText = "Alcalino"; solText.classList.replace('text-red-400', 'text-blue-400');
-                bar.style.backgroundColor = '#3b82f6';
-            } else {
-                solText.innerText = "Neutro"; solText.classList.remove('text-red-400', 'text-blue-400');
-                bar.style.backgroundColor = '#22c55e';
-            }
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 font-sans">
+      <div className="max-w-6xl mx-auto space-y-6">
+        
+        {/* Header Principal */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-900/50 p-6 rounded-3xl border border-slate-800 backdrop-blur-md">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-green-500/20 rounded-2xl">
+              <Activity className="text-green-500 w-8 h-8" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Módulo de Control pH</h1>
+              <p className="text-slate-400 text-sm flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                Sistema de Monitoreo Activo
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setShowConfig(true)}
+            className="mt-4 md:mt-0 p-3 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all border border-slate-700 flex items-center gap-2"
+          >
+            <Settings className="w-5 h-5" />
+            <span className="font-semibold text-sm">Configuración</span>
+          </button>
+        </header>
 
-            // Control de Relees
-            if (currentPh < config.phMin) { pumpPlusState = true; pumpMinusState = false; }
-            else if (currentPh > config.phMax) { pumpMinusState = true; pumpPlusState = false; }
-            else { pumpPlusState = false; pumpMinusState = false; }
+        {/* Dashboard de pH */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Valor Actual */}
+          <div className="lg:col-span-1 bg-slate-900/50 p-8 rounded-3xl border border-slate-800 flex flex-col items-center justify-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent opacity-50"></div>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Lectura de Sonda</span>
+            <div className="text-8xl font-black text-green-500 tabular-nums drop-shadow-[0_0_20px_rgba(34,197,94,0.3)]">
+              {currentPh.toFixed(2)}
+            </div>
+            <div className="mt-8 w-full space-y-4">
+              <div className="flex justify-between text-xs font-bold px-1">
+                <span className="text-slate-500">ESTADO</span>
+                <span className={currentPh < 7 ? 'text-orange-400' : 'text-blue-400'}>
+                  {currentPh < 6.5 ? 'ÁCIDO' : currentPh > 7.5 ? 'ALCALINO' : 'NEUTRO'}
+                </span>
+              </div>
+              <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-green-500 transition-all duration-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
+                  style={{ width: `${(currentPh / 14) * 100}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between items-center bg-slate-950/50 p-3 rounded-xl border border-slate-800">
+                <div className="flex items-center gap-2">
+                  <Droplets className={`w-4 h-4 ${pumpState.plus ? 'text-blue-500 animate-bounce' : 'text-slate-600'}`} />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Relé 1 (pH+)</span>
+                </div>
+                <div className={`px-2 py-0.5 rounded text-[10px] font-bold ${pumpState.plus ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                  {pumpState.plus ? 'DOSIFICANDO' : 'STANDBY'}
+                </div>
+              </div>
+              <div className="flex justify-between items-center bg-slate-950/50 p-3 rounded-xl border border-slate-800">
+                <div className="flex items-center gap-2">
+                  <Droplets className={`w-4 h-4 ${pumpState.minus ? 'text-red-500 animate-bounce' : 'text-slate-600'}`} />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Relé 2 (pH-)</span>
+                </div>
+                <div className={`px-2 py-0.5 rounded text-[10px] font-bold ${pumpState.minus ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                  {pumpState.minus ? 'DOSIFICANDO' : 'STANDBY'}
+                </div>
+              </div>
+            </div>
+          </div>
 
-            // Gráfico
-            mainChart.data.datasets[0].data.push({ x: now, y: currentPh });
-            mainChart.data.datasets[1].data.push({ x: now, y: pumpPlusState ? 1 : 0 });
-            mainChart.data.datasets[2].data.push({ x: now, y: pumpMinusState ? 1 : 0 });
+          {/* Gráfico de Tiempo Real */}
+          <div className="lg:col-span-2 bg-slate-900/50 p-6 rounded-3xl border border-slate-800 h-[450px]">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-tighter flex items-center gap-2">
+                <Timer className="w-4 h-4" /> Historial de Inyección y pH
+              </h3>
+              <div className="flex gap-4">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold"><div className="w-2 h-2 bg-green-500 rounded-full"></div> pH</div>
+                <div className="flex items-center gap-1.5 text-[10px] font-bold"><div className="w-2 h-2 bg-blue-500/30 rounded"></div> Bomba +</div>
+                <div className="flex items-center gap-1.5 text-[10px] font-bold"><div className="w-2 h-2 bg-red-500/30 rounded"></div> Bomba -</div>
+              </div>
+            </div>
+            <div className="h-full w-full pb-8">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis 
+                    dataKey="displayTime" 
+                    hide 
+                  />
+                  <YAxis 
+                    yAxisId="left"
+                    domain={[4, 10]} 
+                    stroke="#475569" 
+                    fontSize={10}
+                    tickFormatter={(val) => `${val} pH`}
+                  />
+                  <YAxis yAxisId="right" orientation="right" hide domain={[0, 1]} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                    labelStyle={{ fontSize: '10px', color: '#64748b', marginBottom: '4px' }}
+                    itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                  />
+                  <ReferenceLine yAxisId="left" y={config.phMin} stroke="#334155" strokeDasharray="5 5" />
+                  <ReferenceLine yAxisId="left" y={config.phMax} stroke="#334155" strokeDasharray="5 5" />
+                  
+                  {/* Áreas de activación de bombas */}
+                  <Area yAxisId="right" type="step" dataKey="pumpPlus" stroke="none" fill="#3b82f6" fillOpacity={0.2} />
+                  <Area yAxisId="right" type="step" dataKey="pumpMinus" stroke="none" fill="#ef4444" fillOpacity={0.2} />
+                  
+                  {/* Línea de pH */}
+                  <Line 
+                    yAxisId="left"
+                    type="monotone" 
+                    dataKey="ph" 
+                    stroke="#22c55e" 
+                    strokeWidth={3} 
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
 
-            if (mainChart.data.datasets[0].data.length > 60) {
-                mainChart.data.datasets.forEach(ds => ds.data.shift());
-            }
+        {/* Modal de Configuración */}
+        {showConfig && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl">
+              <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Settings className="text-green-500" /> Parámetros del Sistema
+                </h2>
+                <button onClick={() => setShowConfig(false)} className="p-2 hover:bg-slate-800 rounded-xl transition-all">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-            mainChart.update('none');
-        }
+              <div className="flex bg-slate-950 p-1 mx-6 mt-6 rounded-2xl border border-slate-800">
+                <button 
+                  onClick={() => setActiveTab('ranges')}
+                  className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all ${activeTab === 'ranges' ? 'bg-slate-800 text-green-500 shadow-inner' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  RANGOS Y CONTROL
+                </button>
+                <button 
+                  onClick={() => setActiveTab('calibration')}
+                  className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all ${activeTab === 'calibration' ? 'bg-slate-800 text-green-500 shadow-inner' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  CALIBRACIÓN SONDA
+                </button>
+              </div>
 
-        // --- HANDLERS ---
-        function toggleConfig() {
-            document.getElementById('configModal').classList.toggle('hidden');
-        }
+              <div className="p-8">
+                {activeTab === 'ranges' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      <div className="group">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block tracking-widest">Setpoint pH Mínimo (Relé 1)</label>
+                        <input 
+                          type="number" 
+                          value={config.phMin}
+                          onChange={(e) => setConfig({...config, phMin: parseFloat(e.target.value)})}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-green-500 font-mono focus:ring-2 focus:ring-green-500/20 outline-none"
+                        />
+                      </div>
+                      <div className="group">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block tracking-widest">Setpoint pH Máximo (Relé 2)</label>
+                        <input 
+                          type="number" 
+                          value={config.phMax}
+                          onChange={(e) => setConfig({...config, phMax: parseFloat(e.target.value)})}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-green-500 font-mono focus:ring-2 focus:ring-green-500/20 outline-none"
+                        />
+                      </div>
+                      <div className="group">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block tracking-widest">Espera Estabilización (Seg)</label>
+                        <input 
+                          type="number" 
+                          value={config.waitTime}
+                          onChange={(e) => setConfig({...config, waitTime: parseInt(e.target.value)})}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-green-500 font-mono focus:ring-2 focus:ring-green-500/20 outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="p-5 bg-blue-500/5 border border-blue-500/20 rounded-2xl">
+                        <h4 className="text-xs font-bold text-blue-400 mb-3 flex items-center gap-2 italic">
+                          <FlaskConical className="w-4 h-4" /> Datos de Peristáltica
+                        </h4>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-[10px] text-slate-500 uppercase block mb-1">Producto pH+</label>
+                            <input 
+                              type="text" 
+                              value={config.prodPlusName}
+                              onChange={(e) => setConfig({...config, prodPlusName: e.target.value})}
+                              className="w-full bg-transparent border-b border-slate-800 py-1 text-sm outline-none focus:border-blue-500 transition-colors"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 uppercase block mb-1">Producto pH-</label>
+                            <input 
+                              type="text" 
+                              value={config.prodMinusName}
+                              onChange={(e) => setConfig({...config, prodMinusName: e.target.value})}
+                              className="w-full bg-transparent border-b border-slate-800 py-1 text-sm outline-none focus:border-red-500 transition-colors"
+                            />
+                          </div>
+                          <div className="pt-2 flex justify-between items-center">
+                            <span className="text-[10px] text-slate-500 uppercase">Caudal Fijo:</span>
+                            <span className="text-xs font-bold text-slate-300">{config.flowRate}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 text-[10px] text-slate-500 leading-relaxed italic">
+                        <AlertCircle className="w-3 h-3 inline mb-0.5 mr-1" />
+                        El sistema dosificará pulsos de 5s seguidos del tiempo de espera de estabilización configurado para evitar el "over-dosing".
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {calibStep === 0 ? (
+                      <div className="space-y-6">
+                        <div className="bg-blue-500/10 p-5 rounded-2xl border border-blue-500/20 flex gap-4">
+                          <Info className="text-blue-500 w-6 h-6 shrink-0" />
+                          <div className="text-sm space-y-2">
+                            <p className="font-bold text-blue-400 uppercase tracking-tighter">Instrucciones de Calibración:</p>
+                            <ol className="list-decimal list-inside text-slate-400 space-y-1 text-xs">
+                              <li>Enjuague la sonda con agua destilada.</li>
+                              <li>Sumerja la sonda en la solución buffer seleccionada.</li>
+                              <li>Presione el botón del buffer y espere a que la lectura se estabilice (30s).</li>
+                            </ol>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          {[4.01, 6.89, 9.18].map(buffer => (
+                            <button 
+                              key={buffer}
+                              onClick={() => startCalibration(buffer)}
+                              className="p-6 bg-slate-950 border border-slate-800 rounded-2xl hover:border-green-500 transition-all group"
+                            >
+                              <div className="text-2xl font-black text-slate-300 group-hover:text-green-500 mb-1">{buffer}</div>
+                              <div className="text-[10px] font-bold text-slate-600 uppercase">Buffer pH</div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : calibStep === 1 ? (
+                      <div className="flex flex-col items-center py-12 space-y-6 animate-pulse">
+                        <div className="w-20 h-20 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="text-center">
+                          <p className="text-xl font-bold text-green-500">Estabilizando Lectura...</p>
+                          <p className="text-slate-500 text-sm">Por favor, no retire la sonda del líquido buffer.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center py-12 space-y-6">
+                        <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center">
+                          <CheckCircle2 className="text-green-500 w-12 h-12" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xl font-bold text-white">¡Calibración Exitosa!</p>
+                          <p className="text-slate-500 text-sm mb-6">El punto de referencia ha sido actualizado en la memoria.</p>
+                          <button 
+                            onClick={() => setCalibStep(0)}
+                            className="px-6 py-2 bg-slate-800 rounded-xl text-xs font-bold hover:bg-slate-700"
+                          >
+                            CALIBRAR OTRO PUNTO
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
-        function switchTab(tab) {
-            ['control', 'calib', 'dose'].forEach(t => {
-                document.getElementById('content-' + t).classList.add('hidden');
-                document.getElementById('tab-' + t).classList.remove('active-tab');
-            });
-            document.getElementById('content-' + tab).classList.remove('hidden');
-            document.getElementById('tab-' + tab).classList.add('active-tab');
-        }
+              <div className="p-6 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-4">
+                <button 
+                  onClick={() => setShowConfig(false)}
+                  className="px-6 py-3 text-xs font-bold text-slate-400 hover:text-white transition-all"
+                >
+                  CANCELAR
+                </button>
+                <button 
+                  onClick={() => setShowConfig(false)}
+                  className="px-8 py-3 bg-green-600 hover:bg-green-500 text-white rounded-2xl text-xs font-bold transition-all shadow-lg shadow-green-900/20 flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" /> GUARDAR CAMBIOS
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
-        function startCalibration(point) {
-            isCalibrating = true;
-            document.getElementById('calib-buttons').classList.add('hidden');
-            document.getElementById('calib-instructions').classList.add('hidden');
-            document.getElementById('calib-timer-box').classList.remove('hidden');
-            document.getElementById('calib-point-name').innerText = point;
-            
-            let timeLeft = 60;
-            const timer = setInterval(() => {
-                timeLeft--;
-                document.getElementById('timer-display').innerText = timeLeft + 's';
-                if (timeLeft <= 0) {
-                    clearInterval(timer);
-                    finishCalibration(point);
-                }
-            }, 1000);
-        }
-
-        function finishCalibration(point) {
-            isCalibrating = false;
-            document.getElementById('calib-buttons').classList.remove('hidden');
-            document.getElementById('calib-instructions').classList.remove('hidden');
-            document.getElementById('calib-timer-box').classList.add('hidden');
-            document.getElementById('timer-display').innerText = '60s';
-            console.log(`Calibración finalizada para punto: ${point}`);
-        }
-
-        function saveSettings() {
-            config.phMin = parseFloat(document.getElementById('set-min').value);
-            config.phMax = parseFloat(document.getElementById('set-max').value);
-            config.prodPlus = document.getElementById('prod-plus').value;
-            config.prodMinus = document.getElementById('prod-minus').value;
-            toggleConfig();
-        }
-
-        setInterval(updateLoop, 1000);
-    </script>
-</body>
-</html>
+export default App;
