@@ -31,24 +31,37 @@ const App = () => {
       const now = new Date();
       
       setCurrentPh(prev => {
-        // Simulación de fluctuación natural
+        // Simulación de fluctuación natural del agua
         let change = (Math.random() - 0.5) * 0.01;
         
-        // Efecto de las bombas
-        if (pumpState.plus) change += 0.04;
-        if (pumpState.minus) change -= 0.04;
+        // Efecto físico de las bombas en el pH
+        if (pumpState.plus) change += 0.05;
+        if (pumpState.minus) change -= 0.05;
         
         const newVal = Math.max(0, Math.min(14, prev + change));
 
-        // Lógica de control con histéresis
-        if (newVal < config.phMin) setPumpState({ plus: true, minus: false });
-        else if (newVal > config.phMax) setPumpState({ plus: false, minus: true });
-        else setPumpState({ plus: false, minus: false });
+        // Lógica de control con histéresis simple
+        if (newVal < config.phMin) {
+          setPumpState({ plus: true, minus: false });
+        } else if (newVal > config.phMax) {
+          setPumpState({ plus: false, minus: true });
+        } else {
+          setPumpState({ plus: false, minus: false });
+        }
 
-        // Guardar punto en el gráfico
-        const timestamp = now.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'2-digit' }) + 
-                          ' ' + now.toLocaleTimeString('es-ES', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        // Generar timestamp con formato DD/MM/AA HH:MM:SS
+        const timestamp = now.toLocaleDateString('es-ES', { 
+          day:'2-digit', 
+          month:'2-digit', 
+          year:'2-digit' 
+        }) + ' ' + now.toLocaleTimeString('es-ES', { 
+          hour12: false, 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit' 
+        });
 
+        // Actualizar el historial del gráfico
         setData(prevData => {
           const newData = [...prevData, {
             time: timestamp,
@@ -56,7 +69,7 @@ const App = () => {
             pumpPlus: pumpState.plus ? 1 : 0,
             pumpMinus: pumpState.minus ? 1 : 0
           }];
-          return newData.slice(-50); // Mantener últimos 50 puntos
+          return newData.slice(-50); // Mantenemos los últimos 50 puntos
         });
 
         return newVal;
@@ -68,7 +81,7 @@ const App = () => {
 
   const startCalibration = () => {
     setCalibStep(1);
-    setTimeout(() => setCalibStep(2), 3000); // Simulación de 3 seg
+    setTimeout(() => setCalibStep(2), 3000); // Simulación de proceso de 3 seg
   };
 
   return (
@@ -82,20 +95,20 @@ const App = () => {
               <Activity className="text-green-500 w-8 h-8" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Control de pH</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-white">Módulo de Control pH</h1>
               <div className="flex items-center gap-2 text-slate-400 text-xs mt-1">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                SENSORES EN LÍNEA
+                SISTEMA EN LÍNEA - MONITOREO ACTIVO
               </div>
             </div>
           </div>
           
           <button 
             onClick={() => setShowConfig(true)}
-            className="mt-4 md:mt-0 flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-6 py-3 rounded-2xl border border-slate-700 transition-all font-bold text-sm"
+            className="mt-4 md:mt-0 flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-6 py-3 rounded-2xl border border-slate-700 transition-all font-bold text-sm text-white"
           >
-            <Settings className="w-4 h-4 text-green-500" />
-            CONFIGURACIÓN
+            <Settings className="w-4 h-4 text-green-400" />
+            AJUSTES DEL SISTEMA
           </button>
         </div>
 
@@ -105,51 +118,55 @@ const App = () => {
           {/* LECTURA ACTUAL */}
           <div className="bg-[#161f33] border border-slate-800 rounded-3xl p-8 flex flex-col items-center justify-center relative overflow-hidden shadow-lg">
             <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent opacity-30"></div>
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">Lectura Tiempo Real</span>
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">Lectura de Sonda</span>
             
             <div className="text-9xl font-black text-green-500 tabular-nums drop-shadow-[0_0_35px_rgba(34,197,94,0.25)]">
               {currentPh.toFixed(2)}
             </div>
 
             <div className="w-full mt-10 space-y-4">
-              {/* Indicador de Bomba 1 */}
               <div className={`flex justify-between items-center p-4 rounded-2xl border transition-all ${pumpState.plus ? 'bg-blue-500/10 border-blue-500/50' : 'bg-slate-900/50 border-slate-800'}`}>
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${pumpState.plus ? 'bg-blue-500 text-white animate-pulse' : 'bg-slate-800 text-slate-500'}`}>
                     <Droplets className="w-4 h-4" />
                   </div>
-                  <span className="text-[11px] font-bold text-slate-400">PH+ (RELÉ 1)</span>
+                  <span className="text-[11px] font-bold text-slate-300">PH+ (RELÉ 1)</span>
                 </div>
                 <span className={`text-[10px] font-black px-2 py-1 rounded ${pumpState.plus ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-500'}`}>
-                  {pumpState.plus ? 'INYECTANDO' : 'ESPERA'}
+                  {pumpState.plus ? 'DOSIFICANDO' : 'STANDBY'}
                 </span>
               </div>
 
-              {/* Indicador de Bomba 2 */}
               <div className={`flex justify-between items-center p-4 rounded-2xl border transition-all ${pumpState.minus ? 'bg-red-500/10 border-red-500/50' : 'bg-slate-900/50 border-slate-800'}`}>
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${pumpState.minus ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-800 text-slate-500'}`}>
                     <Droplets className="w-4 h-4" />
                   </div>
-                  <span className="text-[11px] font-bold text-slate-400">PH- (RELÉ 2)</span>
+                  <span className="text-[11px] font-bold text-slate-300">PH- (RELÉ 2)</span>
                 </div>
                 <span className={`text-[10px] font-black px-2 py-1 rounded ${pumpState.minus ? 'bg-red-500 text-white' : 'bg-slate-800 text-slate-500'}`}>
-                  {pumpState.minus ? 'INYECTANDO' : 'ESPERA'}
+                  {pumpState.minus ? 'DOSIFICANDO' : 'STANDBY'}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* GRÁFICO COMBINADO */}
+          {/* GRÁFICO DE TIEMPO REAL */}
           <div className="lg:col-span-2 bg-[#161f33] border border-slate-800 rounded-3xl p-6 shadow-lg min-h-[450px]">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                <Timer className="w-4 h-4 text-green-500" /> Histórico DD/MM/AA
+                <Timer className="w-4 h-4 text-green-500" /> Historial de pH e Inyección
               </h3>
               <div className="flex gap-4">
-                <div className="flex items-center gap-2 text-[10px] font-bold"><div className="w-2 h-2 bg-green-500 rounded-full"></div> pH</div>
-                <div className="flex items-center gap-2 text-[10px] font-bold"><div className="w-3 h-3 bg-blue-500/20 border border-blue-500/40 rounded"></div> Inyección +</div>
-                <div className="flex items-center gap-2 text-[10px] font-bold"><div className="w-3 h-3 bg-red-500/20 border border-red-500/40 rounded"></div> Inyección -</div>
+                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div> pH
+                </div>
+                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                  <div className="w-3 h-3 bg-blue-500/20 border border-blue-500/40 rounded"></div> Inyección +
+                </div>
+                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                  <div className="w-3 h-3 bg-red-500/20 border border-red-500/40 rounded"></div> Inyección -
+                </div>
               </div>
             </div>
 
@@ -158,20 +175,20 @@ const App = () => {
                 <ComposedChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                   <XAxis dataKey="time" hide />
-                  <YAxis yAxisId="left" domain={[4, 9]} stroke="#475569" fontSize={10} tickFormatter={(v) => `${v}pH`} />
+                  <YAxis yAxisId="left" domain={[4, 9]} stroke="#475569" fontSize={10} tickFormatter={(v) => `${v} pH`} />
                   <YAxis yAxisId="right" orientation="right" hide domain={[0, 1]} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', fontSize: '11px' }}
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', fontSize: '11px', color: '#fff' }}
                     itemStyle={{ fontWeight: 'bold' }}
                   />
-                  <ReferenceLine yAxisId="left" y={config.phMin} stroke="#334155" strokeDasharray="5 5" label={{ value: 'MIN', position: 'left', fill: '#475569', fontSize: 10 }} />
-                  <ReferenceLine yAxisId="left" y={config.phMax} stroke="#334155" strokeDasharray="5 5" label={{ value: 'MAX', position: 'left', fill: '#475569', fontSize: 10 }} />
+                  <ReferenceLine yAxisId="left" y={config.phMin} stroke="#334155" strokeDasharray="5 5" />
+                  <ReferenceLine yAxisId="left" y={config.phMax} stroke="#334155" strokeDasharray="5 5" />
                   
-                  {/* Áreas de activación de bombas */}
-                  <Area yAxisId="right" type="stepAfter" dataKey="pumpPlus" stroke="none" fill="#3b82f6" fillOpacity={0.15} />
-                  <Area yAxisId="right" type="stepAfter" dataKey="pumpMinus" stroke="none" fill="#ef4444" fillOpacity={0.15} />
+                  {/* Capas de inyección de bombas */}
+                  <Area yAxisId="right" type="stepAfter" dataKey="pumpPlus" stroke="none" fill="#3b82f6" fillOpacity={0.15} isAnimationActive={false} />
+                  <Area yAxisId="right" type="stepAfter" dataKey="pumpMinus" stroke="none" fill="#ef4444" fillOpacity={0.15} isAnimationActive={false} />
                   
-                  {/* Línea de pH */}
+                  {/* Línea de pH principal */}
                   <Line 
                     yAxisId="left"
                     type="monotone" 
@@ -184,20 +201,24 @@ const App = () => {
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
+            <div className="mt-2 text-center text-[10px] text-slate-600 font-mono tracking-tighter">
+              Eje X: Tiempo Real (DD/MM/AA HH:MM:SS) | Muestreo cada 2 segundos
+            </div>
           </div>
         </div>
 
         {/* MODAL DE CONFIGURACIÓN */}
         {showConfig && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <div className="bg-[#111827] border border-slate-800 w-full max-w-3xl rounded-[2.5rem] shadow-2xl overflow-hidden">
+            <div className="bg-[#111827] border border-slate-800 w-full max-w-3xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+              
               {/* Header Modal */}
-              <div className="p-8 border-b border-slate-800 flex justify-between items-center bg-[#161f33]/50">
+              <div className="p-8 border-b border-slate-800 flex justify-between items-center bg-[#161f33]/50 text-white">
                 <div className="flex items-center gap-3">
                   <div className="bg-green-500/20 p-2 rounded-xl">
                     <Settings className="w-6 h-6 text-green-500" />
                   </div>
-                  <h2 className="text-xl font-bold">Ajustes de Sistema</h2>
+                  <h2 className="text-xl font-bold">Parámetros del Sistema</h2>
                 </div>
                 <button onClick={() => setShowConfig(false)} className="p-2 hover:bg-slate-800 rounded-full transition-all">
                   <X className="w-6 h-6" />
@@ -208,15 +229,15 @@ const App = () => {
               <div className="flex gap-2 p-6 bg-[#0f172a]">
                 <button 
                   onClick={() => setActiveTab('ranges')}
-                  className={`flex-1 py-4 text-xs font-black rounded-2xl transition-all tracking-widest ${activeTab === 'ranges' ? 'bg-slate-800 text-green-500 border border-slate-700' : 'text-slate-500'}`}
+                  className={`flex-1 py-4 text-[10px] font-black rounded-2xl transition-all tracking-widest uppercase ${activeTab === 'ranges' ? 'bg-slate-800 text-green-500 border border-slate-700' : 'text-slate-500 hover:text-slate-400'}`}
                 >
-                  RANGOS Y BOMBAS
+                  Rangos y Control
                 </button>
                 <button 
                   onClick={() => setActiveTab('calibration')}
-                  className={`flex-1 py-4 text-xs font-black rounded-2xl transition-all tracking-widest ${activeTab === 'calibration' ? 'bg-slate-800 text-green-500 border border-slate-700' : 'text-slate-500'}`}
+                  className={`flex-1 py-4 text-[10px] font-black rounded-2xl transition-all tracking-widest uppercase ${activeTab === 'calibration' ? 'bg-slate-800 text-green-500 border border-slate-700' : 'text-slate-500 hover:text-slate-400'}`}
                 >
-                  CALIBRACIÓN
+                  Calibración de Sonda
                 </button>
               </div>
 
@@ -224,75 +245,79 @@ const App = () => {
               <div className="p-8 min-h-[400px]">
                 {activeTab === 'ranges' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div className="space-y-6">
-                      <h4 className="text-[10px] font-black text-green-500 uppercase tracking-[0.2em] mb-4">Control de Umbral</h4>
+                    <div className="space-y-6 text-white">
+                      <h4 className="text-[10px] font-black text-green-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                        <Activity className="w-3 h-3" /> Umbrales de Reacción
+                      </h4>
                       <div className="space-y-4">
                         <div className="flex flex-col gap-2">
-                          <label className="text-xs font-bold text-slate-400">Punto de activación pH+ (Mínimo)</label>
+                          <label className="text-[11px] font-bold text-slate-400">Punto de activación pH+ (Mínimo)</label>
                           <input 
                             type="number" step="0.1" value={config.phMin}
                             onChange={(e) => setConfig({...config, phMin: parseFloat(e.target.value)})}
-                            className="bg-[#0a0f1c] border border-slate-800 p-4 rounded-xl text-green-500 font-mono outline-none focus:border-green-500/50 transition-all"
+                            className="bg-[#0a0f1c] border border-slate-800 p-4 rounded-xl text-green-500 font-mono outline-none focus:border-green-500/50 transition-all text-lg"
                           />
                         </div>
                         <div className="flex flex-col gap-2">
-                          <label className="text-xs font-bold text-slate-400">Punto de activación pH- (Máximo)</label>
+                          <label className="text-[11px] font-bold text-slate-400">Punto de activación pH- (Máximo)</label>
                           <input 
                             type="number" step="0.1" value={config.phMax}
                             onChange={(e) => setConfig({...config, phMax: parseFloat(e.target.value)})}
-                            className="bg-[#0a0f1c] border border-slate-800 p-4 rounded-xl text-green-500 font-mono outline-none focus:border-green-500/50 transition-all"
+                            className="bg-[#0a0f1c] border border-slate-800 p-4 rounded-xl text-green-500 font-mono outline-none focus:border-green-500/50 transition-all text-lg"
                           />
                         </div>
                         <div className="flex flex-col gap-2 pt-2">
-                          <label className="text-xs font-bold text-slate-400 flex justify-between">
-                            Espera Estabilización <span>{config.waitTime}s</span>
+                          <label className="text-[11px] font-bold text-slate-400 flex justify-between">
+                            Estabilización de Lectura <span>{config.waitTime} seg</span>
                           </label>
                           <input 
                             type="range" min="10" max="300" value={config.waitTime}
                             onChange={(e) => setConfig({...config, waitTime: parseInt(e.target.value)})}
-                            className="accent-green-500 h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                            className="accent-green-500 h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer mt-2"
                           />
                         </div>
                       </div>
                     </div>
 
-                    <div className="space-y-6">
-                      <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-4">Gestión de Reactivos</h4>
-                      <div className="bg-[#0a0f1c] p-6 rounded-2xl border border-slate-800 space-y-5">
+                    <div className="space-y-6 text-white">
+                      <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                        <FlaskConical className="w-3 h-3" /> Reactivos y Caudal
+                      </h4>
+                      <div className="bg-[#0a0f1c] p-6 rounded-3xl border border-slate-800 space-y-5">
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Nombre Producto pH+</label>
+                          <label className="text-[10px] font-black text-slate-500 uppercase">Nombre Reactivo pH+</label>
                           <input 
                             type="text" value={config.prodPlusName}
                             onChange={(e) => setConfig({...config, prodPlusName: e.target.value})}
-                            className="w-full bg-transparent border-b border-slate-800 py-1 text-sm outline-none focus:border-blue-500 transition-colors"
+                            className="w-full bg-transparent border-b border-slate-800 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Nombre Producto pH-</label>
+                          <label className="text-[10px] font-black text-slate-500 uppercase">Nombre Reactivo pH-</label>
                           <input 
                             type="text" value={config.prodMinusName}
                             onChange={(e) => setConfig({...config, prodMinusName: e.target.value})}
-                            className="w-full bg-transparent border-b border-slate-800 py-1 text-sm outline-none focus:border-red-500 transition-colors"
+                            className="w-full bg-transparent border-b border-slate-800 py-2 text-sm outline-none focus:border-red-500 transition-colors"
                           />
                         </div>
-                        <div className="pt-4 flex justify-between text-xs font-bold text-slate-400">
-                          <span>CAUDAL BOMBAS:</span>
-                          <span className="text-white">{config.flowRate}</span>
+                        <div className="pt-4 flex justify-between items-center text-[10px] font-black">
+                          <span className="text-slate-500 uppercase">Configuración Caudal:</span>
+                          <span className="bg-slate-800 px-3 py-1 rounded-full text-blue-400 border border-slate-700">{config.flowRate}</span>
                         </div>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-8">
+                  <div className="space-y-8 text-white">
                     <div className="flex gap-4 p-5 bg-blue-500/5 border border-blue-500/20 rounded-2xl">
-                      <Info className="w-6 h-6 text-blue-500 shrink-0" />
-                      <div className="text-xs space-y-2 text-slate-400">
-                        <p className="font-bold text-blue-400 uppercase tracking-widest">Procedimiento de Calibración:</p>
-                        <ol className="list-decimal ml-4 space-y-1">
-                          <li>Limpie el electrodo con agua destilada y seque suavemente.</li>
-                          <li>Sumerja en solución buffer y seleccione el valor correspondiente abajo.</li>
-                          <li>Espere a que el indicador de estabilización finalice.</li>
-                        </ol>
+                      <Info className="w-5 h-5 text-blue-400 shrink-0" />
+                      <div className="text-[11px] space-y-2 text-slate-400">
+                        <p className="font-bold text-blue-400 uppercase tracking-widest">Protocolo de Calibración</p>
+                        <ul className="list-disc ml-4 space-y-1">
+                          <li>Sumerja la sonda en la solución buffer correspondiente.</li>
+                          <li>Espere a que la lectura sea estable.</li>
+                          <li>El sistema actualizará los valores de compensación en la memoria interna.</li>
+                        </ul>
                       </div>
                     </div>
 
@@ -302,25 +327,24 @@ const App = () => {
                           <button 
                             key={buffer}
                             onClick={startCalibration}
-                            className="bg-[#0a0f1c] border border-slate-800 p-8 rounded-3xl hover:border-green-500 transition-all group relative overflow-hidden"
+                            className="bg-[#0a0f1c] border border-slate-800 p-8 rounded-[2rem] hover:border-green-500 transition-all group relative overflow-hidden text-center"
                           >
-                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-100 transition-opacity">
-                              <ChevronRight className="w-4 h-4 text-green-500" />
-                            </div>
-                            <div className="text-3xl font-black text-slate-300 group-hover:text-green-500 mb-1">{buffer}</div>
+                            <div className="text-3xl font-black text-slate-300 group-hover:text-green-500 mb-1 transition-colors">{buffer}</div>
                             <div className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Buffer pH</div>
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-green-500 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
                           </button>
                         ))}
                       </div>
                     ) : calibStep === 1 ? (
                       <div className="flex flex-col items-center py-10 space-y-6">
-                        <div className="relative">
-                          <div className="w-20 h-20 border-4 border-slate-800 rounded-full"></div>
-                          <div className="absolute top-0 w-20 h-20 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="relative flex items-center justify-center">
+                          <div className="w-24 h-24 border-4 border-slate-800 rounded-full"></div>
+                          <div className="absolute w-24 h-24 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                          <Timer className="absolute w-8 h-8 text-green-500 animate-pulse" />
                         </div>
                         <div className="text-center">
-                          <p className="text-lg font-bold text-green-500 animate-pulse uppercase tracking-widest">Estabilizando Sonda...</p>
-                          <p className="text-slate-500 text-sm mt-1">Calculando curva de regresión para buffer seleccionado</p>
+                          <p className="text-lg font-bold text-green-500 uppercase tracking-widest">Analizando Lectura...</p>
+                          <p className="text-slate-500 text-sm">No retire la sonda del reactivo</p>
                         </div>
                       </div>
                     ) : (
@@ -329,13 +353,13 @@ const App = () => {
                           <CheckCircle2 className="w-10 h-10 text-green-500" />
                         </div>
                         <div className="text-center">
-                          <p className="text-xl font-bold text-white uppercase tracking-[0.2em]">¡ÉXITO!</p>
-                          <p className="text-slate-500 text-sm mb-8">Punto de calibración guardado correctamente en EEPROM.</p>
+                          <p className="text-xl font-black text-white uppercase tracking-[0.2em]">Punto Guardado</p>
+                          <p className="text-slate-500 text-sm mb-8 mt-2">Offset actualizado en EEPROM con éxito.</p>
                           <button 
                             onClick={() => setCalibStep(0)}
-                            className="bg-slate-800 hover:bg-slate-700 px-8 py-3 rounded-2xl text-xs font-black transition-all"
+                            className="bg-slate-800 hover:bg-slate-700 px-10 py-3 rounded-2xl text-[11px] font-black transition-all uppercase tracking-widest text-white border border-slate-700"
                           >
-                            CALIBRAR OTRO PUNTO
+                            Calibrar otro buffer
                           </button>
                         </div>
                       </div>
@@ -349,9 +373,9 @@ const App = () => {
                 <button onClick={() => setShowConfig(false)} className="px-6 py-3 text-xs font-black text-slate-500 hover:text-white transition-all uppercase tracking-widest">Cerrar</button>
                 <button 
                   onClick={() => setShowConfig(false)}
-                  className="bg-green-600 hover:bg-green-500 px-10 py-3 rounded-2xl text-xs font-black text-white flex items-center gap-2 transition-all shadow-lg shadow-green-900/20"
+                  className="bg-green-600 hover:bg-green-500 px-10 py-3 rounded-2xl text-xs font-black text-white flex items-center gap-2 transition-all shadow-lg shadow-green-900/40 border border-green-400/20 uppercase tracking-widest"
                 >
-                  <Save className="w-4 h-4" /> GUARDAR TODO
+                  <Save className="w-4 h-4" /> Guardar Cambios
                 </button>
               </div>
             </div>
