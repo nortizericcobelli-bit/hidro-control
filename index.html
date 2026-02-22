@@ -1,125 +1,16 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control de pH - Monitoreo</title>
-    <!-- Tailwind CSS para el diseño -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <style>
-        body { background-color: #f8fafc; }
-        .card { background: white; border-radius: 1.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
-        .gradient-bg { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
+// Ejemplo conceptual para el frontend
+async function conectarBLE() {
+  const device = await navigator.bluetooth.requestDevice({
+    filters: [{ services: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b'] }]
+  });
+  const server = await device.gatt.connect();
+  const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
+  const characteristic = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
 
-    <!-- Carga de librerías usando módulos ESM para evitar conflictos de ForwardRef -->
-    <script type="module">
-        import React, { useState, useEffect } from 'https://cdn.skypack.dev/react@18';
-        import ReactDOM from 'https://cdn.skypack.dev/react-dom@18';
-        import { 
-            LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
-        } from 'https://cdn.skypack.dev/recharts@2';
-        import lucide from 'https://cdn.skypack.dev/lucide';
-
-        function App() {
-            const [currentPh, setCurrentPh] = useState(7.2);
-            
-            const datos = [
-                { hora: '08:00', ph: 7.2 },
-                { hora: '09:00', ph: 7.3 },
-                { hora: '10:00', ph: 7.5 },
-                { hora: '11:00', ph: 7.1 },
-                { hora: '12:00', ph: 6.8 },
-                { hora: '13:00', ph: 6.9 },
-                { hora: '14:00', ph: 7.0 },
-                { hora: '15:00', ph: 7.2 },
-                { hora: '16:00', ph: 7.4 },
-            ];
-
-            useEffect(() => {
-                // Inicializar iconos de Lucide
-                lucide.createIcons();
-            }, []);
-
-            return React.createElement('div', { className: 'min-h-screen p-4 md:p-8' },
-                React.createElement('div', { className: 'max-w-5xl mx-auto space-y-6' },
-                    
-                    // Encabezado
-                    React.createElement('header', { className: 'gradient-bg rounded-[2rem] p-8 text-white flex flex-col md:flex-row justify-between items-center shadow-2xl' },
-                        React.createElement('div', { className: 'flex items-center gap-5' },
-                            React.createElement('div', { className: 'bg-blue-500/20 p-4 rounded-2xl border border-blue-500/30' },
-                                React.createElement('i', { 'data-lucide': 'activity', className: 'text-blue-400 w-8 h-8' })
-                            ),
-                            React.createElement('div', null,
-                                React.createElement('h1', { className: 'text-2xl font-bold tracking-tight' }, 'Control de pH Industrial'),
-                                React.createElement('div', { className: 'flex items-center gap-2 text-blue-400 text-xs mt-1' },
-                                    React.createElement('span', { className: 'w-2 h-2 rounded-full bg-green-500 animate-pulse' }),
-                                    'SISTEMA ACTIVO'
-                                )
-                            )
-                        ),
-                        React.createElement('button', { className: 'mt-6 md:mt-0 bg-slate-800 hover:bg-slate-700 px-6 py-3 rounded-xl border border-slate-700 transition-all font-bold text-sm flex items-center gap-2 text-white' },
-                            React.createElement('i', { 'data-lucide': 'settings', className: 'w-4 h-4 text-white' }),
-                            'CONFIGURACIÓN'
-                        )
-                    ),
-
-                    // Dashboards
-                    React.createElement('div', { className: 'grid grid-cols-1 lg:grid-cols-3 gap-6' },
-                        
-                        // Lectura Actual
-                        React.createElement('div', { className: 'card p-8 flex flex-col items-center justify-center relative overflow-hidden' },
-                            React.createElement('span', { className: 'text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4' }, 'Lectura Actual'),
-                            React.createElement('div', { className: 'text-8xl font-black text-slate-800 tabular-nums' }, currentPh.toFixed(2)),
-                            React.createElement('div', { className: 'mt-8 w-full space-y-3' },
-                                React.createElement('div', { className: 'flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100' },
-                                    React.createElement('span', { className: 'text-xs font-bold text-slate-500 uppercase' }, 'Estado Sonda'),
-                                    React.createElement('span', { className: 'text-xs font-black text-green-600' }, 'CALIBRADA')
-                                )
-                            )
-                        ),
-
-                        // Gráfico
-                        React.createElement('div', { className: 'lg:col-span-2 card p-6 shadow-sm' },
-                            React.createElement('div', { className: 'flex justify-between items-center mb-6' },
-                                React.createElement('h3', { className: 'text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2' },
-                                    React.createElement('i', { 'data-lucide': 'timer', className: 'w-4 h-4' }),
-                                    'Historial de Monitoreo'
-                                )
-                            ),
-                            React.createElement('div', { style: { width: '100%', height: 300 } },
-                                React.createElement(ResponsiveContainer, null,
-                                    React.createElement(LineChart, { data: datos },
-                                        React.createElement(CartesianGrid, { strokeDasharray: '3 3', stroke: '#f1f5f9', vertical: false }),
-                                        React.createElement(XAxis, { dataKey: 'hora', stroke: '#94a3b8', fontSize: 10, tickLine: false, axisLine: false }),
-                                        React.createElement(YAxis, { domain: [4, 10], stroke: '#94a3b8', fontSize: 10, tickLine: false, axisLine: false }),
-                                        React.createElement(Tooltip, { 
-                                            contentStyle: { borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' } 
-                                        }),
-                                        React.createElement(Line, { 
-                                            type: 'monotone', 
-                                            dataKey: 'ph', 
-                                            stroke: '#2563eb', 
-                                            strokeWidth: 4, 
-                                            dot: { r: 4, fill: '#2563eb', strokeWidth: 2, stroke: '#fff' },
-                                            activeDot: { r: 6 } 
-                                        })
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            );
-        }
-
-        const container = document.getElementById('root');
-        const root = ReactDOM.createRoot(container);
-        root.render(React.createElement(App));
-    </script>
-</body>
-</html>
+  await characteristic.startNotifications();
+  characteristic.addEventListener('characteristicvaluechanged', (event) => {
+    let valor = new TextDecoder().decode(event.target.value);
+    let datos = JSON.parse(valor); // Aquí recibes tu JSON del ESP32
+    actualizarInterfaz(datos);
+  });
+}
