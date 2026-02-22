@@ -1,16 +1,58 @@
-// Ejemplo conceptual para el frontend
-async function conectarBLE() {
-  const device = await navigator.bluetooth.requestDevice({
-    filters: [{ services: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b'] }]
-  });
-  const server = await device.gatt.connect();
-  const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
-  const characteristic = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
+// 1. Declarar variables globales
+let bleCharacteristic;
+let bleDevice;
 
-  await characteristic.startNotifications();
-  characteristic.addEventListener('characteristicvaluechanged', (event) => {
-    let valor = new TextDecoder().decode(event.target.value);
-    let datos = JSON.parse(valor); // Aquí recibes tu JSON del ESP32
-    actualizarInterfaz(datos);
-  });
+async function conectarBLE() {
+  try {
+    console.log("Buscando dispositivo...");
+    bleDevice = await navigator.bluetooth.requestDevice({
+      filters: [{ name: 'HIDRO_PRO_TOTAL' }], // Es mejor filtrar por nombre o UUID
+      optionalServices: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b']
+    });
+
+    const server = await bleDevice.gatt.connect();
+    const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
+    
+    // Guardamos la característica globalmente
+    bleCharacteristic = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
+
+    await bleCharacteristic.startNotifications();
+    
+    bleCharacteristic.addEventListener('characteristicvaluechanged', (event) => {
+      let valor = new TextDecoder().decode(event.target.value);
+      try {
+        let datos = JSON.parse(valor);
+        actualizarInterfaz(datos);
+      } catch (e) {
+        console.error("Error al parsear JSON del ESP32", e);
+      }
+    });
+
+    console.log("¡Conectado!");
+
+  } catch (error) {
+    console.error("Error de conexión:", error);
+  }
+}
+
+// 2. FUNCIÓN QUE TE FALTA: Enviar comandos al ESP32
+async function enviarComando(pin, estado) {
+  if (!bleCharacteristic) {
+    alert("Primero conecta el Bluetooth");
+    return;
+  }
+
+  // Creamos el objeto que tu ESP32 espera en 'onWrite'
+  const cmd = JSON.stringify({ p: pin, s: estado });
+  
+  // Convertimos String a Uint8Array (lo que entiende el Bluetooth)
+  const encoder = new TextEncoder();
+  const data = encoder.encode(cmd);
+
+  try {
+    await bleCharacteristic.writeValue(data);
+    console.log("Comando enviado:", cmd);
+  } catch (error) {
+    console.error("Error enviando comando:", error);
+  }
 }
