@@ -1,58 +1,183 @@
-// 1. Declarar variables globales
-let bleCharacteristic;
-let bleDevice;
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMA HIDROPÓNICO V2</title>
+    <!-- Tailwind CSS para diseño moderno rápido -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0a0a0a; color: #e5e7eb; }
+        .glass { background: rgba(31, 41, 55, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(75, 85, 99, 0.3); }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
 
-async function conectarBLE() {
-  try {
-    console.log("Buscando dispositivo...");
-    bleDevice = await navigator.bluetooth.requestDevice({
-      filters: [{ name: 'HIDRO_PRO_TOTAL' }], // Es mejor filtrar por nombre o UUID
-      optionalServices: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b']
-    });
+    <!-- Header -->
+    <header class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-green-400 tracking-wider">HIDROPONÍA INDUSTRIAL V2</h1>
+            <p class="text-gray-400 text-sm">Control por Histéresis Temporal - BLE</p>
+        </div>
+        <div class="flex items-center gap-4">
+            <div id="connStatus" class="text-xs uppercase font-semibold text-red-500">
+                <span class="status-dot bg-red-500 mr-2"></span>Desconectado
+            </div>
+            <button id="btnConnect" onclick="conectarBLE()" class="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-full font-bold transition-all shadow-lg">
+                CONECTAR DISPOSITIVO
+            </button>
+        </div>
+    </header>
 
-    const server = await bleDevice.gatt.connect();
-    const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
-    
-    // Guardamos la característica globalmente
-    bleCharacteristic = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
+    <main class="max-w-6xl mx-auto">
+        <!-- Dashboard Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            
+            <!-- pH Card -->
+            <div class="glass p-6 rounded-2xl shadow-xl">
+                <div class="text-gray-400 text-xs font-bold mb-2">POTENCIAL HIDRÓGENO</div>
+                <div class="flex items-baseline gap-2">
+                    <span id="phVal" class="text-5xl font-black text-white">--</span>
+                    <span class="text-green-400 font-bold text-xl">pH</span>
+                </div>
+                <div class="mt-4 w-full bg-gray-700 h-1 rounded-full overflow-hidden">
+                    <div id="phBar" class="bg-green-400 h-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
 
-    await bleCharacteristic.startNotifications();
-    
-    bleCharacteristic.addEventListener('characteristicvaluechanged', (event) => {
-      let valor = new TextDecoder().decode(event.target.value);
-      try {
-        let datos = JSON.parse(valor);
-        actualizarInterfaz(datos);
-      } catch (e) {
-        console.error("Error al parsear JSON del ESP32", e);
-      }
-    });
+            <!-- TDS Card -->
+            <div class="glass p-6 rounded-2xl shadow-xl">
+                <div class="text-gray-400 text-xs font-bold mb-2">SÓLIDOS DISUELTOS</div>
+                <div class="flex items-baseline gap-2">
+                    <span id="tdsVal" class="text-5xl font-black text-white">--</span>
+                    <span class="text-blue-400 font-bold text-sm">PPM</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-4 italic">Concentración Nutrientes A+B</p>
+            </div>
 
-    console.log("¡Conectado!");
+            <!-- Temp Agua -->
+            <div class="glass p-6 rounded-2xl shadow-xl">
+                <div class="text-gray-400 text-xs font-bold mb-2">TEMPERATURA AGUA</div>
+                <div class="flex items-baseline gap-2">
+                    <span id="twVal" class="text-5xl font-black text-white">--</span>
+                    <span class="text-orange-400 font-bold text-xl">°C</span>
+                </div>
+                <div id="tempStatus" class="text-[10px] mt-4 uppercase font-bold text-gray-500">Estable</div>
+            </div>
 
-  } catch (error) {
-    console.error("Error de conexión:", error);
-  }
-}
+            <!-- Ambiente -->
+            <div class="glass p-6 rounded-2xl shadow-xl">
+                <div class="text-gray-400 text-xs font-bold mb-2">AIRE & HUMEDAD</div>
+                <div class="flex flex-col gap-1">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Temp:</span>
+                        <span id="taVal" class="font-bold">--°C</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Hum:</span>
+                        <span id="haVal" class="font-bold">--%</span>
+                    </div>
+                    <div class="flex justify-between mt-2 pt-2 border-t border-gray-700">
+                        <span class="text-gray-400">Luz:</span>
+                        <span id="lightVal" class="text-xs font-bold uppercase">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-// 2. FUNCIÓN QUE TE FALTA: Enviar comandos al ESP32
-async function enviarComando(pin, estado) {
-  if (!bleCharacteristic) {
-    alert("Primero conecta el Bluetooth");
-    return;
-  }
+        <!-- System Info -->
+        <div class="glass p-4 rounded-xl flex flex-col md:flex-row justify-between items-center text-xs text-gray-400 gap-4">
+            <div id="uptime">TIEMPO DE ACTIVIDAD: --</div>
+            <div class="flex gap-4">
+                <span>VERSIÓN: 2.0.4-INDUSTRIAL</span>
+                <span class="text-green-900">|</span>
+                <span>GITHUB: /HIDROPONIA-TOTAL-ESP32</span>
+            </div>
+        </div>
+    </main>
 
-  // Creamos el objeto que tu ESP32 espera en 'onWrite'
-  const cmd = JSON.stringify({ p: pin, s: estado });
-  
-  // Convertimos String a Uint8Array (lo que entiende el Bluetooth)
-  const encoder = new TextEncoder();
-  const data = encoder.encode(cmd);
+    <script>
+        // Variables de estado BLE
+        let bleCharacteristic;
+        let bleDevice;
 
-  try {
-    await bleCharacteristic.writeValue(data);
-    console.log("Comando enviado:", cmd);
-  } catch (error) {
-    console.error("Error enviando comando:", error);
-  }
-}
+        async function conectarBLE() {
+            try {
+                console.log("Solicitando conexión...");
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'HIDRO_PRO_TOTAL' }],
+                    optionalServices: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b']
+                });
+
+                const server = await bleDevice.gatt.connect();
+                const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
+                bleCharacteristic = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
+
+                // Notificar conexión exitosa
+                actualizarEstadoConexion(true);
+
+                await bleCharacteristic.startNotifications();
+                bleCharacteristic.addEventListener('characteristicvaluechanged', (event) => {
+                    let valor = new TextDecoder().decode(event.target.value);
+                    try {
+                        let datos = JSON.parse(valor);
+                        actualizarInterfaz(datos);
+                    } catch (e) {
+                        console.error("Error parseando JSON:", e);
+                    }
+                });
+
+                // Manejar desconexión
+                bleDevice.addEventListener('gattserverdisconnected', () => {
+                    actualizarEstadoConexion(false);
+                });
+
+            } catch (error) {
+                console.log("Error de conexión:", error);
+                alert("No se pudo conectar: " + error.message);
+            }
+        }
+
+        function actualizarInterfaz(datos) {
+            // Actualizar Texto
+            document.getElementById('phVal').innerText = datos.ph.toFixed(1);
+            document.getElementById('tdsVal').innerText = datos.tds;
+            document.getElementById('twVal').innerText = datos.tw.toFixed(1);
+            document.getElementById('taVal').innerText = datos.ta.toFixed(1) + "°C";
+            document.getElementById('haVal').innerText = datos.ha.toFixed(1) + "%";
+            document.getElementById('uptime').innerText = "TIEMPO DE ACTIVIDAD: " + datos.up;
+            document.getElementById('lightVal').innerText = datos.light ? "ENCENDIDA" : "APAGADA";
+            document.getElementById('lightVal').className = datos.light ? "text-xs font-bold uppercase text-yellow-400" : "text-xs font-bold uppercase text-gray-600";
+
+            // Actualizar Barra de pH (Escala 0 a 14)
+            const phPercent = (datos.ph / 14) * 100;
+            document.getElementById('phBar').style.width = phPercent + "%";
+            
+            // Color dinámico de pH
+            if(datos.ph < 5.5) document.getElementById('phBar').className = "bg-red-500 h-full transition-all duration-500";
+            else if(datos.ph > 6.5) document.getElementById('phBar').className = "bg-yellow-500 h-full transition-all duration-500";
+            else document.getElementById('phBar').className = "bg-green-400 h-full transition-all duration-500";
+        }
+
+        function actualizarEstadoConexion(conectado) {
+            const statusDiv = document.getElementById('connStatus');
+            const btn = document.getElementById('btnConnect');
+            
+            if (conectado) {
+                statusDiv.innerHTML = '<span class="status-dot bg-green-500 mr-2"></span>Conectado';
+                statusDiv.classList.replace('text-red-500', 'text-green-500');
+                btn.innerText = "DESCONECTAR";
+                btn.classList.replace('bg-green-600', 'bg-red-600');
+                btn.onclick = () => { bleDevice.gatt.disconnect(); };
+            } else {
+                statusDiv.innerHTML = '<span class="status-dot bg-red-500 mr-2"></span>Desconectado';
+                statusDiv.classList.replace('text-green-500', 'text-red-500');
+                btn.innerText = "CONECTAR DISPOSITIVO";
+                btn.classList.replace('bg-red-600', 'bg-green-600');
+                btn.onclick = conectarBLE;
+            }
+        }
+    </script>
+</body>
+</html>
