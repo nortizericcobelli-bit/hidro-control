@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA HIDROPÓNICO V2</title>
-    <!-- Tailwind CSS para diseño moderno rápido -->
+    <title>SISTEMA HIDROPÓNICO V2 - CALIBRACIÓN</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0a0a0a; color: #e5e7eb; }
         .glass { background: rgba(31, 41, 55, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(75, 85, 99, 0.3); }
         .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; }
+        #settingsModal { display: none; }
+        .modal-active { display: flex !important; }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
@@ -21,6 +22,10 @@
             <p class="text-gray-400 text-sm">Control por Histéresis Temporal - BLE</p>
         </div>
         <div class="flex items-center gap-4">
+            <!-- Botón de Settings -->
+            <button onclick="toggleSettings()" class="p-2 hover:bg-gray-800 rounded-full transition-colors border border-gray-700">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
             <div id="connStatus" class="text-xs uppercase font-semibold text-red-500">
                 <span class="status-dot bg-red-500 mr-2"></span>Desconectado
             </div>
@@ -30,13 +35,43 @@
         </div>
     </header>
 
+    <!-- Modal de Configuración/Calibración -->
+    <div id="settingsModal" class="fixed inset-0 z-50 items-center justify-center bg-black/80 p-4">
+        <div class="glass max-w-md w-full p-8 rounded-3xl border border-green-500/30">
+            <h2 class="text-xl font-bold text-white mb-6 flex items-center">
+                Calibración de Sonda pH
+            </h2>
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2 font-bold uppercase">Ajuste de Desviación (Offset)</label>
+                    <input type="range" id="phOffsetInput" min="-10" max="10" step="0.1" value="0" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-500" oninput="actualizarOffsetLabel(this.value)">
+                    <div class="flex justify-between text-xs mt-2 text-gray-500">
+                        <span>Restar (-10)</span>
+                        <span id="offsetLabel" class="text-green-400 font-bold text-lg">0.0</span>
+                        <span>Sumar (+10)</span>
+                    </div>
+                </div>
+                
+                <div class="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl">
+                    <p class="text-[10px] text-yellow-200 leading-tight">
+                        Nota: Si tu sonda marca 14.8 en agua de lluvia (aprox 6.5), ajusta el offset a aprox -8.3 para corregir la lectura.
+                    </p>
+                </div>
+
+                <button onclick="toggleSettings()" class="w-full bg-green-600 py-3 rounded-xl font-bold text-white hover:bg-green-500 transition-colors">
+                    GUARDAR Y CERRAR
+                </button>
+            </div>
+        </div>
+    </div>
+
     <main class="max-w-6xl mx-auto">
         <!-- Dashboard Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             
             <!-- pH Card -->
-            <div class="glass p-6 rounded-2xl shadow-xl">
-                <div class="text-gray-400 text-xs font-bold mb-2">POTENCIAL HIDRÓGENO</div>
+            <div class="glass p-6 rounded-2xl shadow-xl relative overflow-hidden">
+                <div class="text-gray-400 text-xs font-bold mb-2 uppercase tracking-tighter">Potencial Hidrógeno (Calibrado)</div>
                 <div class="flex items-baseline gap-2">
                     <span id="phVal" class="text-5xl font-black text-white">--</span>
                     <span class="text-green-400 font-bold text-xl">pH</span>
@@ -44,43 +79,44 @@
                 <div class="mt-4 w-full bg-gray-700 h-1 rounded-full overflow-hidden">
                     <div id="phBar" class="bg-green-400 h-full transition-all duration-500" style="width: 0%"></div>
                 </div>
+                <div id="rawPhDisplay" class="absolute bottom-2 right-4 text-[9px] text-gray-600 font-mono">RAW: --</div>
             </div>
 
             <!-- TDS Card -->
             <div class="glass p-6 rounded-2xl shadow-xl">
-                <div class="text-gray-400 text-xs font-bold mb-2">SÓLIDOS DISUELTOS</div>
+                <div class="text-gray-400 text-xs font-bold mb-2 uppercase tracking-tighter">Sólidos Disueltos</div>
                 <div class="flex items-baseline gap-2">
                     <span id="tdsVal" class="text-5xl font-black text-white">--</span>
                     <span class="text-blue-400 font-bold text-sm">PPM</span>
                 </div>
-                <p class="text-xs text-gray-500 mt-4 italic">Concentración Nutrientes A+B</p>
+                <p class="text-xs text-gray-500 mt-4 italic">Concentración A+B</p>
             </div>
 
             <!-- Temp Agua -->
             <div class="glass p-6 rounded-2xl shadow-xl">
-                <div class="text-gray-400 text-xs font-bold mb-2">TEMPERATURA AGUA</div>
+                <div class="text-gray-400 text-xs font-bold mb-2 uppercase tracking-tighter text-orange-400/50">Temp Agua</div>
                 <div class="flex items-baseline gap-2">
                     <span id="twVal" class="text-5xl font-black text-white">--</span>
                     <span class="text-orange-400 font-bold text-xl">°C</span>
                 </div>
-                <div id="tempStatus" class="text-[10px] mt-4 uppercase font-bold text-gray-500">Estable</div>
+                <div id="tempStatus" class="text-[10px] mt-4 uppercase font-bold text-gray-500 tracking-widest">Monitoreo Sumergible</div>
             </div>
 
             <!-- Ambiente -->
             <div class="glass p-6 rounded-2xl shadow-xl">
-                <div class="text-gray-400 text-xs font-bold mb-2">AIRE & HUMEDAD</div>
+                <div class="text-gray-400 text-xs font-bold mb-2 uppercase tracking-tighter">Ambiente</div>
                 <div class="flex flex-col gap-1">
                     <div class="flex justify-between">
-                        <span class="text-gray-400">Temp:</span>
+                        <span class="text-gray-400">Temp Aire:</span>
                         <span id="taVal" class="font-bold">--°C</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-400">Hum:</span>
+                        <span class="text-gray-400">Hum Relativa:</span>
                         <span id="haVal" class="font-bold">--%</span>
                     </div>
                     <div class="flex justify-between mt-2 pt-2 border-t border-gray-700">
                         <span class="text-gray-400">Luz:</span>
-                        <span id="lightVal" class="text-xs font-bold uppercase">--</span>
+                        <span id="lightVal" class="text-xs font-bold uppercase tracking-wider text-yellow-500">--</span>
                     </div>
                 </div>
             </div>
@@ -88,23 +124,32 @@
 
         <!-- System Info -->
         <div class="glass p-4 rounded-xl flex flex-col md:flex-row justify-between items-center text-xs text-gray-400 gap-4">
-            <div id="uptime">TIEMPO DE ACTIVIDAD: --</div>
+            <div id="uptime">UPTIME: --</div>
             <div class="flex gap-4">
-                <span>VERSIÓN: 2.0.4-INDUSTRIAL</span>
+                <span>V2.1-CALIBRATION</span>
                 <span class="text-green-900">|</span>
-                <span>GITHUB: /HIDROPONIA-TOTAL-ESP32</span>
+                <span>GITHUB: HIDROPONIA-TOTAL-ESP32</span>
             </div>
         </div>
     </main>
 
     <script>
-        // Variables de estado BLE
         let bleCharacteristic;
         let bleDevice;
+        let currentPhOffset = 0;
+
+        function toggleSettings() {
+            document.getElementById('settingsModal').classList.toggle('modal-active');
+        }
+
+        function actualizarOffsetLabel(val) {
+            currentPhOffset = parseFloat(val);
+            document.getElementById('offsetLabel').innerText = (currentPhOffset >= 0 ? "+" : "") + currentPhOffset.toFixed(1);
+        }
 
         async function conectarBLE() {
             try {
-                console.log("Solicitando conexión...");
+                console.log("Iniciando búsqueda de dispositivo...");
                 bleDevice = await navigator.bluetooth.requestDevice({
                     filters: [{ name: 'HIDRO_PRO_TOTAL' }],
                     optionalServices: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b']
@@ -114,7 +159,6 @@
                 const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
                 bleCharacteristic = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
 
-                // Notificar conexión exitosa
                 actualizarEstadoConexion(true);
 
                 await bleCharacteristic.startNotifications();
@@ -124,40 +168,50 @@
                         let datos = JSON.parse(valor);
                         actualizarInterfaz(datos);
                     } catch (e) {
-                        console.error("Error parseando JSON:", e);
+                        console.error("Error JSON:", e);
                     }
                 });
 
-                // Manejar desconexión
                 bleDevice.addEventListener('gattserverdisconnected', () => {
                     actualizarEstadoConexion(false);
                 });
 
             } catch (error) {
                 console.log("Error de conexión:", error);
-                alert("No se pudo conectar: " + error.message);
+                alert("Error de conexión BLE. Asegúrese de que el Bluetooth esté activo.");
             }
         }
 
         function actualizarInterfaz(datos) {
-            // Actualizar Texto
-            document.getElementById('phVal').innerText = datos.ph.toFixed(1);
+            // Cálculo con Calibración
+            let rawPh = datos.ph;
+            let calibratedPh = rawPh + currentPhOffset;
+            
+            // Límites lógicos para la interfaz (0-14)
+            if (calibratedPh > 14) calibratedPh = 14;
+            if (calibratedPh < 0) calibratedPh = 0;
+
+            // Actualizar Elementos
+            document.getElementById('phVal').innerText = calibratedPh.toFixed(1);
+            document.getElementById('rawPhDisplay').innerText = "RAW: " + rawPh.toFixed(2);
             document.getElementById('tdsVal').innerText = datos.tds;
             document.getElementById('twVal').innerText = datos.tw.toFixed(1);
             document.getElementById('taVal').innerText = datos.ta.toFixed(1) + "°C";
             document.getElementById('haVal').innerText = datos.ha.toFixed(1) + "%";
-            document.getElementById('uptime').innerText = "TIEMPO DE ACTIVIDAD: " + datos.up;
-            document.getElementById('lightVal').innerText = datos.light ? "ENCENDIDA" : "APAGADA";
-            document.getElementById('lightVal').className = datos.light ? "text-xs font-bold uppercase text-yellow-400" : "text-xs font-bold uppercase text-gray-600";
-
-            // Actualizar Barra de pH (Escala 0 a 14)
-            const phPercent = (datos.ph / 14) * 100;
-            document.getElementById('phBar').style.width = phPercent + "%";
+            document.getElementById('uptime').innerText = "UPTIME: " + datos.up;
             
-            // Color dinámico de pH
-            if(datos.ph < 5.5) document.getElementById('phBar').className = "bg-red-500 h-full transition-all duration-500";
-            else if(datos.ph > 6.5) document.getElementById('phBar').className = "bg-yellow-500 h-full transition-all duration-500";
-            else document.getElementById('phBar').className = "bg-green-400 h-full transition-all duration-500";
+            const lightEl = document.getElementById('lightVal');
+            lightEl.innerText = datos.light ? "ACTIVA" : "BAJA/OFF";
+            lightEl.className = datos.light ? "text-xs font-bold uppercase text-yellow-400" : "text-xs font-bold uppercase text-gray-600";
+
+            // Barra de pH
+            const phPercent = (calibratedPh / 14) * 100;
+            const bar = document.getElementById('phBar');
+            bar.style.width = phPercent + "%";
+            
+            if(calibratedPh < 5.5) bar.className = "bg-red-500 h-full transition-all duration-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]";
+            else if(calibratedPh > 6.5) bar.className = "bg-yellow-500 h-full transition-all duration-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]";
+            else bar.className = "bg-green-400 h-full transition-all duration-500 shadow-[0_0_10px_rgba(74,222,128,0.5)]";
         }
 
         function actualizarEstadoConexion(conectado) {
@@ -165,7 +219,7 @@
             const btn = document.getElementById('btnConnect');
             
             if (conectado) {
-                statusDiv.innerHTML = '<span class="status-dot bg-green-500 mr-2"></span>Conectado';
+                statusDiv.innerHTML = '<span class="status-dot bg-green-500 mr-2 shadow-[0_0_5px_#22c55e]"></span>Conectado';
                 statusDiv.classList.replace('text-red-500', 'text-green-500');
                 btn.innerText = "DESCONECTAR";
                 btn.classList.replace('bg-green-600', 'bg-red-600');
